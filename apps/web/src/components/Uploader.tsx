@@ -1,4 +1,3 @@
-import { HTMLAttributes } from "preact";
 import { useFileUpload } from "../hooks/useFileUpload";
 
 export function Uploader() {

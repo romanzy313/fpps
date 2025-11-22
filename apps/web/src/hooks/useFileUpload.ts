@@ -31,18 +31,23 @@ function fileUploadReducer(
   switch (event.type) {
     case "filesSelected":
       return {
-        ...state,
-        totalCount: event.files.length,
-        totalSizeBytes: event.files.reduce((acc, file) => acc + file.size, 0),
-        uploadedIndex: 0,
-        uploadedSizeBytes: 0,
-        files: event.files.map((file) => ({
-          path: file.webkitRelativePath,
-          name: file.name,
-          sizeBytes: file.size,
-          file,
-          status: "TODO",
-        })),
+        totalCount: event.files.length + state.totalCount,
+        totalSizeBytes: event.files.reduce(
+          (acc, file) => acc + file.size,
+          state.totalSizeBytes,
+        ),
+        uploadedIndex: state.uploadedIndex,
+        uploadedSizeBytes: state.uploadedSizeBytes,
+        files: [
+          ...state.files,
+          ...event.files.map((file) => ({
+            path: file.webkitRelativePath,
+            name: file.name,
+            sizeBytes: file.size,
+            file,
+            status: "TODO" as const,
+          })),
+        ],
       };
     case "fileUploaded":
       return {
