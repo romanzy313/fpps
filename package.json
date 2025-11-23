@@ -1,11 +1,13 @@
 {
   "name": "@fpps/monorepo",
   "version": "1.0.0",
-  "description": "",
+  "description": "ffps (name TBD) application to share files using peer-to-peer browser technologies",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "pnpm run --recursive --stream --aggregate-output --color lint"
+    "lint": "pnpm run --recursive --stream --aggregate-output --color lint",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter cloudflare-workers dev"
   },
   "keywords": [],
   "author": "Roman Volovoy",

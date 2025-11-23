@@ -25,12 +25,12 @@ export function Uploader() {
         <input
           type="file"
           multiple
-          // @ts-expect-error it exists
-          webkitdirectory
-          // @ts-expect-error it exists, thx typescript!
-          mozdirectory
-          // @ts-expect-error it exists, thx typescript!
-          directory
+          {...({
+            webkitdirectory: "",
+            mozdirectory: "",
+            directory: "",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any)}
           onChange={(e) => onFilesSelect(e.currentTarget.files!)}
         />
       </div>
