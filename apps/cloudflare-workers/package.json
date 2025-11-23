@@ -10,7 +10,7 @@
 		"cf-typegen": "wrangler types"
 	},
 	"author": "Roman Volovoy",
-	"license": "MIT",
+	"license": "AGPL-3.0",
 	"dependencies": {
 		"@fpps/common": "workspace:^"
 	},

@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "author": "Roman Volovoy",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "dependencies": {
     "@fpps/common": "workspace:^",
     "preact": "^10.26.9",
