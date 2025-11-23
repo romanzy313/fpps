@@ -19,3 +19,11 @@ export function parseP2PSignalingPayload(
 
   return json as P2PSignalingPayload;
 }
+
+export function serializeP2PSignalingPayload(
+  payload: P2PSignalingPayload,
+): string {
+  const json = JSON.stringify(payload);
+
+  return btoa(json);
+}

@@ -56,8 +56,8 @@ main {
 
 main .container {
     width: 100%;
-    padding: 0 2rem;
-    /*margin: 0 2rem;*/
+    /*padding: 0 2rem;*/
+    margin: 0 2rem;
     background-color: lightblue;
 }
 
@@ -76,4 +76,21 @@ main .container {
 
 .error {
     color: red;
+}
+
+/* tailwind-like helpers*/
+
+.flex {
+    display: flex;
+}
+
+.w-100 {
+    width: 100%;
+}
+
+.bg-red {
+    background-color: red;
+}
+.bg-grey {
+    background-color: grey;
 }

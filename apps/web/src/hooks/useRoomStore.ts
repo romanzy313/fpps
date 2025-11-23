@@ -29,7 +29,7 @@ type PeerFiles = {
   }[];
 };
 
-type RoomStoreState = {
+export type RoomStoreState = {
   connection: {
     apiError: string;
     peerStatus: "connected" | "connecting" | "disconnected";
@@ -127,7 +127,7 @@ function roomStoreReducer(
           items: [
             ...state.myFiles.items,
             ...action.files.map((file) => ({
-              path: file.webkitRelativePath.replace(file.name, ""),
+              path: file.webkitRelativePath.replace("/" + file.name, ""), // TODO: check windows
               name: file.name,
               sizeBytes: file.size,
               file,
@@ -153,5 +153,15 @@ function roomStoreReducer(
 // a single store will be used for the whole application
 export function useRoomStore(roomParams: RoomParams) {
   console.log("created room store with params", { roomParams });
-  return useReducer(roomStoreReducer, initialState(roomParams));
+  const [state, dispatch] = useReducer(
+    roomStoreReducer,
+    initialState(roomParams),
+  );
+
+  return {
+    state,
+    dispatch,
+  };
 }
+
+export type RoomStore = ReturnType<typeof useRoomStore>;
