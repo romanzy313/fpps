@@ -1,0 +1,29 @@
+services:
+  # development config that is super easy. Exposes this on the machine via 0.0.0.0,
+  # so that other peers can be found.
+  coturn:
+    image: coturn/coturn:4.6.3
+    container_name: coturn
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:3478:3478"
+      - "0.0.0.0:3478:3478/udp"
+    environment:
+      DETECT_EXTERNAL_IP: "yes"
+    command:
+      - "-v"
+      - "--log-file=stdout"
+      - "--listening-port=3478"
+      - "--listening-ip=0.0.0.0"
+      - "--fingerprint"
+      - "--lt-cred-mech"
+      - "--user=dev:dev123"
+      - "--realm=localhost"
+      - "--server-name=localhost"
+      - "--no-dtls"
+      - "--no-tls"
+      - "--allow-loopback-peers"
+      - "--no-cli"
+      - "--verbose"
+      - "--use-auth-secret"
+      - "--static-auth-secret=devdevdev"

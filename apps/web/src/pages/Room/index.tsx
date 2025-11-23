@@ -1,12 +1,11 @@
 import "./style.css";
 import { MyFiles } from "../../components/MyFiles";
-// import { useRoomParams } from "../../hooks/useRoomParams";
 import { useRoomStore } from "../../hooks/useRoomStore";
 import { parseRoomParams, stringifyRoomParams } from "../../utils/roomParams";
 import { PeerFiles } from "../../components/PeerFiles";
 import { config } from "../../config";
-import { useEffect, useMemo } from "preact/hooks";
-import { googleStunICEServers, PeerChannelImpl } from "../../peer/PeerChannel";
+import { useEffect } from "preact/hooks";
+import { PeerChannelImpl, devStunServers } from "../../peer/PeerChannel";
 
 export function Room() {
   // const { value, setValue } = useRoomParams(); // TODO: maybe this is needed to update it?
@@ -58,7 +57,7 @@ export function Room() {
         },
       },
       {
-        iceServerUris: [googleStunICEServers],
+        iceServerUris: [devStunServers],
       },
     );
     peerChannel.connect();
