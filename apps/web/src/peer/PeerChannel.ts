@@ -37,8 +37,10 @@ export type PeerChannelCallbacks = {
 };
 
 // TODO: will reconnects need to recreate SignalingApi?
-// TODO: can implement out of band negotiation, as protocol and id is known by both
-// https://webrtc.link/en/articles/rtcdatachannel-usage-and-message-size-limits/
+// TODO: can implement the perfect negotication pattern as documented here:
+// https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Perfect_negotiation
+// the initiator can be impolite, while the joiner is polite
+// It works okay right now, but sometimes requires a refresh
 export class PeerChannelImpl {
   private pc: RTCPeerConnection | null = null;
   private _signalingApi: SignalingApi | null = null;
