@@ -1,21 +1,8 @@
-import { parseApiSignalingRequest } from '@fpps/common';
+import { parseApiSignalingRequest, SignalingResponse } from '@fpps/common';
 import type { KvStore } from '../kvStore';
-
-type SignalingRequest =
-	| {
-			type: 'message';
-			thisUser: string; // uuid of the sender
-			forUser: string; // uuid of the reciever
-			payload: string; // base64 encoded, encrypted signaling payload
-	  }
-	| { type: 'poll'; thisUser: string };
 
 type RequestContext = {
 	kvStore: KvStore;
-};
-
-type SignalingResponse = {
-	payloads: string[];
 };
 
 const signalingKey = (user: string) => `signaling/${user}`;
@@ -26,10 +13,15 @@ export async function signaling(reqRaw: unknown, { kvStore }: RequestContext): P
 	const req = parseApiSignalingRequest(reqRaw);
 
 	if (req.type === 'message') {
-		const { forUser, payload } = req;
+		const { forUser, payloads } = req;
 		const outboxKey = signalingKey(forUser);
 
-		const ok = await kvStore.push(outboxKey, payload, {
+		console.log('message sent payloads', {
+			forUser,
+			count: payloads.length,
+		});
+
+		const ok = await kvStore.push(outboxKey, payloads, {
 			queueMaxSize: 10,
 		});
 		if (!ok) {
@@ -46,6 +38,18 @@ export async function signaling(reqRaw: unknown, { kvStore }: RequestContext): P
 	const pendingPayloads = await kvStore.pop<string>(inboxKey);
 	if (!pendingPayloads) {
 		throw new Error('Failed to read signaling message');
+	}
+
+	if (req.type === 'poll') {
+		console.log('polling payloads', {
+			thisUser,
+			count: pendingPayloads.length,
+		});
+	} else {
+		console.log('message read payloads', {
+			thisUser,
+			count: pendingPayloads.length,
+		});
 	}
 
 	return {

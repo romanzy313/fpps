@@ -32,7 +32,7 @@ type PeerFiles = {
 export type RoomStoreState = {
   connection: {
     apiError: string;
-    peerStatus: "connected" | "connecting" | "disconnected";
+    peerStatus: "online" | "offline" | "connecting" | "reconnecting";
     peerError: string;
   };
   room: RoomParams;
@@ -41,10 +41,12 @@ export type RoomStoreState = {
 };
 
 function initialState(roomParams: RoomParams): RoomStoreState {
+  console.log("gotten initial state", { roomParams });
+
   return {
     connection: {
       apiError: "",
-      peerStatus: "disconnected",
+      peerStatus: "offline",
       peerError: "",
     },
     room: roomParams,
@@ -67,8 +69,9 @@ function initialState(roomParams: RoomParams): RoomStoreState {
 
 type RoomStoreAction =
   | { type: "peerConnected" }
-  | { type: "peerConnecting"; peerId: string }
-  | { type: "peerError"; error: string }
+  | { type: "peerConnecting" }
+  | { type: "peerDisconnected" } // graceful disconnect
+  | { type: "peerError"; error: string } // TODO: descrete error code
   | {
       type: "filesAdded";
       files: File[];
@@ -87,7 +90,7 @@ function roomStoreReducer(
         ...state,
         connection: {
           ...state.connection,
-          peerStatus: "connected",
+          peerStatus: "online",
           peerError: "",
         },
       };
@@ -99,9 +102,14 @@ function roomStoreReducer(
           peerStatus: "connecting",
           peerError: "",
         },
-        room: {
-          ...state.room,
-          peerId: action.peerId,
+      };
+    case "peerDisconnected":
+      return {
+        ...state,
+        connection: {
+          ...state.connection,
+          peerStatus: "offline",
+          peerError: "",
         },
       };
     case "peerError":
@@ -109,7 +117,7 @@ function roomStoreReducer(
         ...state,
         connection: {
           ...state.connection,
-          peerStatus: "disconnected",
+          peerStatus: "reconnecting",
           peerError: action.error,
         },
       };
@@ -151,6 +159,7 @@ function roomStoreReducer(
 }
 
 // a single store will be used for the whole application
+// TODO: this gets called on every single rerender...
 export function useRoomStore(roomParams: RoomParams) {
   console.log("created room store with params", { roomParams });
   const [state, dispatch] = useReducer(

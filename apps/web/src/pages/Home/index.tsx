@@ -5,7 +5,7 @@ import { config } from "../../config";
 import { useRoomParams } from "../../hooks/useRoomParams";
 import { secureId } from "../../utils/secureId";
 import { useLocation } from "preact-iso";
-import { stringifyRoomParams } from "../../utils/roomParams";
+import { isValidRoomHash, stringifyRoomParams } from "../../utils/roomParams";
 
 export function Home() {
   const [health, setHealth] = useState<boolean | null>(null);
@@ -14,12 +14,14 @@ export function Home() {
 
   function startRoom() {
     const myId = secureId();
+    const peerId = secureId();
     const secret = "";
 
     const hashValue = stringifyRoomParams({
       myId,
-      peerId: "",
+      peerId,
       secret,
+      isInitiator: true,
     });
 
     route(`/room#${hashValue}`);
@@ -68,8 +70,31 @@ export function Home() {
       </div>
 
       <div style={{ height: "100px" }}></div>
-      <button onClick={startRoom}>Create a room</button>
-      <p>Or join a room by using a url</p>
+      <div>
+        <button onClick={startRoom}>Create a room</button>
+      </div>
+      <div>
+        <div>Or enter room code:</div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const elem = (e.target as HTMLFormElement)
+              .elements[0]! as HTMLInputElement;
+            const code = elem.value;
+
+            if (!isValidRoomHash(code)) {
+              alert("Given code is invalid!");
+              elem.value = "";
+              return;
+            }
+            // TODO: validate the code
+            route(`/room#${code}`);
+          }}
+        >
+          <input type="text" placeholder="Room code" />
+          <button type="submit">Join</button>
+        </form>
+      </div>
     </div>
   );
 }
