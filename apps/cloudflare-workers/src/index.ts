@@ -20,9 +20,10 @@ export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
 
-		if (url.pathname === '/health') {
+		if (request.method === 'GET' && url.pathname === '/api/health') {
+			console.log('Health check OK');
 			return new Response('OK');
-		} else if (request.method === 'POST' && url.pathname === '/signaling') {
+		} else if (request.method === 'POST' && url.pathname === '/api/signaling') {
 			// TODO: all of this needs to be try-catched
 			const signalingReq = await request.json(); // TODO: validate me
 

@@ -10,7 +10,7 @@ export default defineConfig({
       allowedHeaders: ["Content-Type"],
     },
     proxy: {
-      "/signaling": {
+      "/api": {
         target: "http://localhost:8787",
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, ""),
