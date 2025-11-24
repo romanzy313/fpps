@@ -32,7 +32,8 @@ export interface PeerConnectionOptions {
 
 export type PeerChannelCallbacks = {
   onConnectionStateChange: (status: PeerConnectionStatus) => void;
-  onMessageReceived: (message: ArrayBuffer) => void;
+  // onMessageReceived: (message: ArrayBuffer) => void;
+  onMessageReceived: (message: Uint8Array) => void;
   onDataDrained: () => void;
   onError: (message: string) => void;
 };
@@ -249,7 +250,7 @@ export class PeerChannelImpl {
 
   // sends data to the peer. If false it returned, it means that the sender
   // must retry sending. Ideally they should wait for the backpressure to go away
-  send(data: unknown): boolean {
+  send(data: Uint8Array): boolean {
     if (!this.dataChannel || this.dataChannel.readyState !== "open") {
       console.error("Data channel is not open");
       return false;
@@ -261,9 +262,8 @@ export class PeerChannelImpl {
       console.log("Data channel is full, try again later");
       return false;
     }
-    // json is used for now...
-    // it will need to be binary with a header
-    this.dataChannel.send(JSON.stringify(data));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.dataChannel.send(data as any);
 
     return true;
   }

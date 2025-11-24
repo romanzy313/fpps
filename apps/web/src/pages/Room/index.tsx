@@ -6,6 +6,7 @@ import { PeerFiles } from "../../components/PeerFiles";
 import { config } from "../../config";
 import { useEffect } from "preact/hooks";
 import { PeerChannelImpl, devStunServers } from "../../peer/PeerChannel";
+import { p2pToBytes } from "@fpps/common";
 
 export function Room() {
   // const { value, setValue } = useRoomParams(); // TODO: maybe this is needed to update it?
@@ -62,9 +63,23 @@ export function Room() {
     );
     peerChannel.connect();
 
+    const interval = setInterval(() => {
+      const ok = peerChannel.send(
+        p2pToBytes({
+          type: "ping",
+          value: null,
+        }),
+      );
+
+      if (!ok) {
+        console.warn("BACKPRESSURE ENCOUNTERED");
+      }
+    }, 10_000);
+
     return () => {
       console.log("closing peer channel");
       peerChannel.close();
+      clearInterval(interval);
     };
   }, []);
 
