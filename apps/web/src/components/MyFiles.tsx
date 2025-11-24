@@ -1,13 +1,14 @@
+import { UseRoom } from "../hooks/useRoom";
 import { RoomStore } from "../hooks/useRoomStore";
 import { JsonDebug } from "./JsonDebug";
 
 type Props = {
-  roomStore: RoomStore;
+  room: UseRoom;
 };
 
-export function MyFiles({ roomStore }: Props) {
-  const fileCount = roomStore.state.myFiles.totalCount;
-  const fileSize = roomStore.state.myFiles.totalSizeBytes;
+export function MyFiles({ room }: Props) {
+  const fileCount = room.state.myFiles.totalCount;
+  const fileSize = room.state.myFiles.totalSizeBytes;
 
   function onFilesSelect(fileList: FileList) {
     const files: File[] = [];
@@ -15,7 +16,7 @@ export function MyFiles({ roomStore }: Props) {
     for (const file of fileList) {
       files.push(file);
     }
-    roomStore.dispatch({ type: "filesAdded", files });
+    room.addMyFiles(files);
   }
 
   return (
@@ -25,7 +26,7 @@ export function MyFiles({ roomStore }: Props) {
       </h2>
       <div className="bg-grey" style={{ height: "20rem", overflowY: "auto" }}>
         <div>File browser does here</div>
-        <JsonDebug data={roomStore.state.myFiles} />
+        <JsonDebug data={room.state.myFiles} />
       </div>
       <div
         style={{

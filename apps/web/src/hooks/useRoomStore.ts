@@ -73,8 +73,16 @@ type RoomStoreAction =
   | { type: "peerDisconnected" } // graceful disconnect
   | { type: "peerError"; error: string } // TODO: descrete error code
   | {
-      type: "filesAdded";
+      type: "myFilesAdded";
       files: File[];
+    }
+  | {
+      type: "peerFilesAdded";
+      files: {
+        path: string;
+        name: string;
+        sizeBytes: number;
+      }[];
     }
   | {
       type: "fileUploaded";
@@ -121,7 +129,7 @@ function roomStoreReducer(
           peerError: action.error,
         },
       };
-    case "filesAdded":
+    case "myFilesAdded":
       return {
         ...state, // does this need a deep copy?
         myFiles: {
@@ -139,6 +147,28 @@ function roomStoreReducer(
               name: file.name,
               sizeBytes: file.size,
               file,
+              status: "TODO" as const,
+            })),
+          ],
+        },
+      };
+    case "peerFilesAdded":
+      return {
+        ...state,
+        peerFiles: {
+          totalCount: action.files.length + state.peerFiles.totalCount,
+          totalSizeBytes: action.files.reduce(
+            (acc, file) => acc + file.sizeBytes,
+            state.peerFiles.totalSizeBytes,
+          ),
+          downloadedIndex: state.peerFiles.downloadedIndex,
+          downloadedSizeBytes: state.peerFiles.downloadedSizeBytes,
+          items: [
+            ...state.peerFiles.items,
+            ...action.files.map((file) => ({
+              path: file.path, // TODO: check windows
+              name: file.name,
+              sizeBytes: file.sizeBytes,
               status: "TODO" as const,
             })),
           ],

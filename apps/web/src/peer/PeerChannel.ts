@@ -23,11 +23,8 @@ type PeerConnectionStatus =
 //   }>; // this works like a reader. what happens during disconnects?
 // }
 
-export const publicGoogleStunServers = ["stun:stun.l.google.com:19302"];
-export const devStunServers = ["stun:localhost:3478"];
-
 export interface PeerConnectionOptions {
-  iceServerUris: string[][]; // TODO: use sensible free ICE servers https://www.metered.ca/blog/list-of-webrtc-ice-servers/
+  iceServers: RTCIceServer[]; // TODO: use sensible free ICE servers https://www.metered.ca/blog/list-of-webrtc-ice-servers/
 }
 
 export type PeerChannelCallbacks = {
@@ -74,7 +71,7 @@ export class PeerChannelImpl {
 
     // init things
     this.pc = new RTCPeerConnection({
-      iceServers: this.options.iceServerUris.map((url) => ({ urls: url })),
+      iceServers: this.options.iceServers,
     });
     this.setupPeerConnection();
     this._signalingApi = new SignalingApi(

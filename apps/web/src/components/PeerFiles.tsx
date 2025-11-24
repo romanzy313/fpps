@@ -1,13 +1,13 @@
-import { RoomStore } from "../hooks/useRoomStore";
+import { UseRoom } from "../hooks/useRoom";
 import { JsonDebug } from "./JsonDebug";
 
 type Props = {
-  roomStore: RoomStore;
+  room: UseRoom;
 };
 
-export function PeerFiles({ roomStore }: Props) {
-  const fileCount = roomStore.state.peerFiles.totalCount;
-  const fileSize = roomStore.state.peerFiles.totalSizeBytes;
+export function PeerFiles({ room }: Props) {
+  const fileCount = room.state.peerFiles.totalCount;
+  const fileSize = room.state.peerFiles.totalSizeBytes;
 
   function onDownload() {
     alert("starting file download...");
@@ -20,7 +20,7 @@ export function PeerFiles({ roomStore }: Props) {
       </h2>
       <div className="bg-grey" style={{ height: "20rem", overflowY: "auto" }}>
         <div>File browser does here</div>
-        <JsonDebug data={roomStore.state.peerFiles} />
+        <JsonDebug data={room.state.peerFiles} />
       </div>
       <div
         style={{

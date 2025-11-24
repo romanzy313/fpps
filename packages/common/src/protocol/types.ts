@@ -12,6 +12,10 @@ export type PeerMessage =
       value: string;
     }
   | {
-      type: "testBinary";
-      value: Uint8Array;
+      type: "filesAdded";
+      value: {
+        path: string;
+        name: string;
+        sizeBytes: number;
+      }[];
     };
