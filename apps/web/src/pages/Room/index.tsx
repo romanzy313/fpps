@@ -4,27 +4,29 @@ import { useRoomStore } from "../../hooks/useRoomStore";
 import { parseRoomParams, stringifyRoomParams } from "../../utils/roomParams";
 import { PeerFiles } from "../../components/PeerFiles";
 import { config } from "../../config";
-import { useEffect } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { PeerChannelImpl, devStunServers } from "../../peer/PeerChannel";
-import { p2pToBytes } from "@fpps/common";
+import { p2pFromBytes, p2pToBytes, PeerMessage } from "@fpps/common";
 
 export function Room() {
   // const { value, setValue } = useRoomParams(); // TODO: maybe this is needed to update it?
 
-  const roomStore = useRoomStore(
-    parseRoomParams(window.location.hash.substring(1)),
-  );
+  // this could be dangerous...
+  const roomParams = useRef(parseRoomParams(window.location.hash.substring(1)));
 
+  const roomStore = useRoomStore(roomParams.current);
   const { state, dispatch } = roomStore;
 
   const isPeerOffline = state.connection.peerStatus === "offline";
 
+  const sendMessageToPeer = useRef<(value: PeerMessage) => boolean>(() => {
+    throw new Error("TOO EARLY");
+  });
+
   useEffect(() => {
-    const roomParams = parseRoomParams(window.location.hash.substring(1));
-    // setup a peer channel here?
     console.log("initializing peer channel");
     const peerChannel = new PeerChannelImpl(
-      roomParams,
+      roomParams.current,
       {
         onConnectionStateChange(status) {
           switch (status) {
@@ -54,7 +56,8 @@ export function Room() {
           dispatch({ type: "peerError", error: message });
         },
         onMessageReceived(message) {
-          console.log("message received", message);
+          const parsed = p2pFromBytes(message);
+          console.log("message received", parsed);
         },
       },
       {
@@ -62,19 +65,20 @@ export function Room() {
       },
     );
     peerChannel.connect();
+    sendMessageToPeer.current = (value: PeerMessage) => {
+      return peerChannel.send(p2pToBytes(value));
+    };
 
     const interval = setInterval(() => {
-      const ok = peerChannel.send(
-        p2pToBytes({
-          type: "ping",
-          value: null,
-        }),
-      );
+      const ok = sendMessageToPeer.current({
+        type: "ping",
+        value: null,
+      });
 
       if (!ok) {
-        console.warn("BACKPRESSURE ENCOUNTERED");
+        console.warn("BACKPRESSURE ENCOUNTERED or not connected");
       }
-    }, 10_000);
+    }, 5_000);
 
     return () => {
       console.log("closing peer channel");
@@ -127,6 +131,19 @@ export function Room() {
         <div className={"peer-files"}>
           <PeerFiles roomStore={roomStore}></PeerFiles>
         </div>
+      </div>
+      <div>
+        <h2>Test zone</h2>
+        <button
+          onClick={() =>
+            sendMessageToPeer.current!({
+              type: "testMessage",
+              value: "Something",
+            })
+          }
+        >
+          Send something
+        </button>
       </div>
     </div>
   );

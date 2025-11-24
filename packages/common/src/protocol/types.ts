@@ -1,4 +1,4 @@
-export type ProtocolType =
+export type PeerMessage =
   | {
       type: "ping";
       value: null;

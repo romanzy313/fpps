@@ -179,8 +179,9 @@ export class PeerChannelImpl {
     };
 
     this.dataChannel.onmessage = (event) => {
-      console.log("Received message:", event.data);
-      this.callbacks.onMessageReceived(event.data);
+      // convert to Uint8Array
+      const uint8Array = new Uint8Array(event.data);
+      this.callbacks.onMessageReceived(uint8Array);
     };
 
     this.dataChannel.onbufferedamountlow = () => {
@@ -262,8 +263,10 @@ export class PeerChannelImpl {
       console.log("Data channel is full, try again later");
       return false;
     }
+
+    const arrayBuffer = data.buffer;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.dataChannel.send(data as any);
+    this.dataChannel.send(arrayBuffer as any);
 
     return true;
   }
