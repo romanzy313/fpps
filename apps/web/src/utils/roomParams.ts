@@ -48,7 +48,9 @@ export function parseRoomParams(hash: string) {
         value.isInitiator = partValue === "1";
         break;
       default:
-        throw new Error(`Unknown key: ${key}. PartValue: ${partValue}`);
+        throw new Error(
+          `Unknown key: ${key}. PartValue: ${partValue}. Hash: ${hash}`,
+        );
     }
   }
 

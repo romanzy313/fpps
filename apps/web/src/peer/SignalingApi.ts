@@ -144,9 +144,9 @@ export class SignalingApi {
   }
 
   private async pollApi(): Promise<P2PSignalingPayload[]> {
-    console.log("polling payloads", {
-      myId: this.roomParams.myId,
-    });
+    // console.log("API polling payloads", {
+    //   myId: this.roomParams.myId,
+    // });
 
     const payload = serializeApiSignalingPollRequest({
       myId: this.roomParams.myId,
@@ -167,10 +167,10 @@ export class SignalingApi {
     const json = await response.json();
     const result = parseApiSignalingResponse(json, this.roomParams.secret);
 
-    console.log("polling received payloads", {
-      myId: this.roomParams.myId,
-      count: result.length,
-    });
+    // console.log("API polling received payloads", {
+    //   myId: this.roomParams.myId,
+    //   count: result.length,
+    // });
 
     return result;
   }
@@ -178,10 +178,10 @@ export class SignalingApi {
   private async sendApi(
     signals: P2PSignalingPayload[],
   ): Promise<P2PSignalingPayload[]> {
-    console.log("sending payloads", {
-      myId: this.roomParams.myId,
-      count: signals.length,
-    });
+    // console.log("API sending payloads", {
+    //   myId: this.roomParams.myId,
+    //   count: signals.length,
+    // });
 
     const payload = serializeApiSignalingMessageRequest({
       myId: this.roomParams.myId,
@@ -205,10 +205,10 @@ export class SignalingApi {
     const json = await response.json();
     const result = parseApiSignalingResponse(json, this.roomParams.secret);
 
-    console.log("sending received payloads", {
-      myId: this.roomParams.myId,
-      count: result.length,
-    });
+    // console.log("API sending received payloads", {
+    //   myId: this.roomParams.myId,
+    //   count: result.length,
+    // });
 
     return result;
   }

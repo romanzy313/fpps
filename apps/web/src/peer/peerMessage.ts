@@ -1,5 +1,19 @@
 import { decode, encode } from "json-or-binary";
-import type { PeerMessage } from "./types";
+import { PeerFiles } from "./Core";
+
+export type PeerMessage =
+  | {
+      type: "ping";
+      value: null;
+    }
+  | {
+      type: "testMessage";
+      value: string;
+    }
+  | {
+      type: "filesUpdated";
+      value: PeerFiles;
+    };
 
 export function peerMessageToBytes(data: PeerMessage): Uint8Array {
   return encode(data);

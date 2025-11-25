@@ -1,26 +1,30 @@
-import { UseRoom } from "../hooks/useRoom";
+import { useMemo } from "preact/hooks";
+import { FileItem } from "../peer/Core";
 import { JsonDebug } from "./JsonDebug";
 
 type Props = {
-  room: UseRoom;
+  fileItems: FileItem[];
+  startDownload: () => void;
 };
 
-export function PeerFiles({ room }: Props) {
-  const fileCount = room.state.peerFiles.totalCount;
-  const fileSize = room.state.peerFiles.totalSizeBytes;
-
+export function PeerFiles({ fileItems, startDownload }: Props) {
+  const fileCount = useMemo(() => fileItems.length, [fileItems]);
+  const fileSizeBytes = useMemo(
+    () => fileItems.reduce((acc, item) => acc + item.sizeBytes, 0),
+    [fileItems],
+  );
   function onDownload() {
-    alert("starting file download...");
+    startDownload();
   }
 
   return (
     <>
       <h2>
-        Peer Files ({fileCount} files, {fileSize} bytes)
+        Peer Files ({fileCount} files, {fileSizeBytes} bytes)
       </h2>
       <div className="bg-grey" style={{ height: "20rem", overflowY: "auto" }}>
         <div>File browser does here</div>
-        <JsonDebug data={room.state.peerFiles} />
+        <JsonDebug data={fileItems} />
       </div>
       <div
         style={{

@@ -1,15 +1,20 @@
-import { RoomParams } from "../utils/roomParams";
-import { parseRoomParams, stringifyRoomParams } from "../utils/roomParams";
+import { useEffect, useState } from "preact/hooks";
+import { parseRoomParams } from "../utils/roomParams";
 
-import { useUrlHash } from "./useUrlHash";
+export function useRoomParams2() {
+  const [roomParams, setRoomParams] = useState(
+    parseRoomParams(window.location.hash.substring(1)),
+  );
 
-export function useRoomParams() {
-  const { hashValue, setHash } = useUrlHash();
+  useEffect(() => {
+    const onHashChange = () => {
+      // console.log("hash has changed", window.location.hash);
+      setRoomParams(parseRoomParams(window.location.hash.substring(1)));
+    };
 
-  return {
-    value: parseRoomParams(hashValue),
-    setValue: (value: RoomParams) => {
-      setHash(stringifyRoomParams(value));
-    },
-  };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [window.location.hash]);
+
+  return roomParams;
 }

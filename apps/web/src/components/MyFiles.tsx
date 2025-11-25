@@ -1,14 +1,18 @@
-import { UseRoom } from "../hooks/useRoom";
-import { RoomStore } from "../hooks/useRoomStore";
+import { useMemo } from "preact/hooks";
+import { FileItem } from "../peer/Core";
 import { JsonDebug } from "./JsonDebug";
 
 type Props = {
-  room: UseRoom;
+  fileItems: FileItem[];
+  addMyFiles: (files: File[]) => void;
 };
 
-export function MyFiles({ room }: Props) {
-  const fileCount = room.state.myFiles.totalCount;
-  const fileSize = room.state.myFiles.totalSizeBytes;
+export function MyFiles({ fileItems, addMyFiles }: Props) {
+  const fileCount = useMemo(() => fileItems.length, [fileItems]);
+  const fileSize = useMemo(
+    () => fileItems.reduce((acc, item) => acc + item.sizeBytes, 0),
+    [fileItems],
+  );
 
   function onFilesSelect(fileList: FileList) {
     const files: File[] = [];
@@ -16,7 +20,7 @@ export function MyFiles({ room }: Props) {
     for (const file of fileList) {
       files.push(file);
     }
-    room.addMyFiles(files);
+    addMyFiles(files);
   }
 
   return (
@@ -26,7 +30,7 @@ export function MyFiles({ room }: Props) {
       </h2>
       <div className="bg-grey" style={{ height: "20rem", overflowY: "auto" }}>
         <div>File browser does here</div>
-        <JsonDebug data={room.state.myFiles} />
+        <JsonDebug data={fileItems} />
       </div>
       <div
         style={{

@@ -1,8 +1,12 @@
 import { P2PSignalingPayload } from "@fpps/common";
 import { RoomParams } from "../utils/roomParams";
 import { SignalingApi } from "./SignalingApi";
+import { peerMessageFromBytes } from "./peerMessage";
 
-type PeerConnectionStatus =
+const PING_TIMEOUT = 10_000;
+const PING_INTERVAL = 5_000;
+
+export type PeerConnectionStatus =
   | "connecting"
   | "connected"
   | "disconnected"
@@ -28,11 +32,13 @@ export interface PeerConnectionOptions {
 }
 
 export type PeerChannelCallbacks = {
+  // when failed is sent, the outside needs to connect again
   onConnectionStateChange: (status: PeerConnectionStatus) => void;
   // onMessageReceived: (message: ArrayBuffer) => void;
   onMessageReceived: (message: Uint8Array) => void;
   onDataDrained: () => void;
   onError: (message: string) => void;
+  sendPing: () => void;
 };
 
 // TODO: will reconnects need to recreate SignalingApi?
@@ -42,45 +48,18 @@ export type PeerChannelCallbacks = {
 // It works okay right now, but sometimes requires a refresh
 export class PeerChannelImpl {
   private pc: RTCPeerConnection | null = null;
-  private _signalingApi: SignalingApi | null = null;
+  private signalingApi: SignalingApi | null = null;
   private dataChannel: RTCDataChannel | null = null;
+
+  private peerPingTimeout: NodeJS.Timeout | null = null;
+  private myPingInterval: NodeJS.Timeout | null = null;
 
   constructor(
     private roomParams: RoomParams,
     private callbacks: PeerChannelCallbacks,
     private options: PeerConnectionOptions,
-  ) {}
-
-  private get signalingApiMust() {
-    if (!this._signalingApi) {
-      throw new Error("Signaling API is not initialized");
-    }
-    return this._signalingApi;
-  }
-
-  private destroySignalingApi() {
-    if (!this._signalingApi) {
-      return;
-    }
-    this._signalingApi.stop();
-    this._signalingApi = null;
-  }
-
-  private init() {
-    this.close();
-
-    // init things
-    this.pc = new RTCPeerConnection({
-      iceServers: this.options.iceServers,
-    });
-    this.setupPeerConnection();
-    this._signalingApi = new SignalingApi(
-      this.roomParams,
-      (p2pSignalingPayload) => {
-        this.handleSignalingMessage(p2pSignalingPayload);
-      },
-    );
-    this._signalingApi.start();
+  ) {
+    this.connect();
   }
 
   async connect() {
@@ -102,7 +81,102 @@ export class PeerChannelImpl {
       });
     } else {
       // no nothing?
+      // need to resend the offer somehow, as these values can expire
     }
+  }
+
+  // sends data to the peer. If false it returned, it means that the sender
+  // must retry sending. Ideally they should wait for the backpressure to go away
+  send(data: Uint8Array, opts: { useBackpressure: boolean }): boolean {
+    if (!this.dataChannel || this.dataChannel.readyState !== "open") {
+      const decoded = peerMessageFromBytes(data);
+      console.log("WHAT WAS ATTEMPTED TO SEND", decoded);
+      throw new Error("Cannot send: data channel is not open");
+    }
+    if (
+      opts?.useBackpressure &&
+      this.dataChannel.bufferedAmount >
+        this.dataChannel.bufferedAmountLowThreshold
+    ) {
+      console.log("Cannot send: data channel is full, try again later");
+      return false;
+    }
+
+    const arrayBuffer = data.buffer;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.dataChannel.send(arrayBuffer as any);
+
+    return true;
+  }
+
+  get canSend(): boolean {
+    const isDatachannelOpen =
+      this.dataChannel !== null && this.dataChannel.readyState === "open";
+
+    return isDatachannelOpen;
+  }
+
+  close() {
+    if (this.pc) {
+      this.pc.close(); // this closes the data channel too?!
+      this.dataChannel = null;
+      this.pc = null;
+    }
+    this.destroySignalingApi();
+
+    if (this.myPingInterval) {
+      clearInterval(this.myPingInterval);
+      this.myPingInterval = null;
+    }
+    if (this.peerPingTimeout) {
+      clearTimeout(this.peerPingTimeout);
+      this.peerPingTimeout = null;
+    }
+  }
+
+  recievedPing() {
+    if (this.peerPingTimeout) {
+      clearTimeout(this.peerPingTimeout);
+    }
+    this.peerPingTimeout = setTimeout(() => {
+      console.error("PING TIMED OUT, will implement reconnecting (TODO)");
+    }, PING_TIMEOUT);
+  }
+
+  getStats(): Promise<RTCStatsReport | null> {
+    return this.pc?.getStats() ?? Promise.resolve(null);
+  }
+
+  private get signalingApiMust() {
+    if (!this.signalingApi) {
+      throw new Error("Signaling API is not initialized");
+    }
+    return this.signalingApi;
+  }
+
+  private destroySignalingApi() {
+    if (!this.signalingApi) {
+      return;
+    }
+    this.signalingApi.stop();
+    this.signalingApi = null;
+  }
+
+  private init() {
+    this.close();
+
+    // init things
+    this.pc = new RTCPeerConnection({
+      iceServers: this.options.iceServers,
+    });
+    this.setupPeerConnection();
+    this.signalingApi = new SignalingApi(
+      this.roomParams,
+      (p2pSignalingPayload) => {
+        this.handleSignalingMessage(p2pSignalingPayload);
+      },
+    );
+    this.signalingApi.start();
   }
 
   private setupPeerConnection() {
@@ -133,15 +207,16 @@ export class PeerChannelImpl {
 
       switch (this.pc!.connectionState) {
         case "connected":
-          newState = "connected";
+          // newState = "connected";
           this.destroySignalingApi();
+
+          newState = "connecting"; // still need to wait for the data channel to open
           break;
         case "disconnected":
           newState = "disconnected";
           break;
         case "failed":
           newState = "failed";
-          this.connect(); // for now, use the failed state as need to reconnect
           break;
         case "closed":
           newState = "disconnected";
@@ -173,6 +248,15 @@ export class PeerChannelImpl {
 
     this.dataChannel.onopen = () => {
       console.log("Data channel opened");
+      this.callbacks.onConnectionStateChange("connected");
+
+      this.myPingInterval = setInterval(() => {
+        if (this.canSend) {
+          this.callbacks.sendPing();
+        }
+      }, PING_INTERVAL);
+      // send ping right away
+      this.callbacks.sendPing();
     };
 
     this.dataChannel.onmessage = (event) => {
@@ -187,6 +271,7 @@ export class PeerChannelImpl {
     };
 
     this.dataChannel.onerror = (event) => {
+      // channel may not been closed
       console.error("Data channel error event:", event);
 
       this.callbacks.onError(event.error.message);
@@ -244,41 +329,5 @@ export class PeerChannelImpl {
     } catch (error) {
       console.error("Error adding ICE candidate:", error);
     }
-  }
-
-  // sends data to the peer. If false it returned, it means that the sender
-  // must retry sending. Ideally they should wait for the backpressure to go away
-  send(data: Uint8Array): boolean {
-    if (!this.dataChannel || this.dataChannel.readyState !== "open") {
-      console.error("Data channel is not open");
-      return false;
-    }
-    if (
-      this.dataChannel.bufferedAmount >
-      this.dataChannel.bufferedAmountLowThreshold
-    ) {
-      console.log("Data channel is full, try again later");
-      return false;
-    }
-
-    const arrayBuffer = data.buffer;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.dataChannel.send(arrayBuffer as any);
-
-    return true;
-  }
-
-  close() {
-    if (this.pc) {
-      this.pc.close();
-      this.dataChannel = null;
-      this.pc = null;
-    }
-    // TODO: also set this.pc to null
-    this.destroySignalingApi();
-  }
-
-  getStats(): Promise<RTCStatsReport | null> {
-    return this.pc?.getStats() ?? Promise.resolve(null);
   }
 }
