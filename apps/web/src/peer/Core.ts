@@ -36,14 +36,20 @@ export class Core {
   connectionState: ReactSubscribable<PeerConnectionState>;
 
   private filesToUpload: File[] = [];
-  myFiles: PeerFiles = {
+  private myFiles: PeerFiles = {
     id: secureId(),
     items: [],
   };
-  peerFiles: PeerFiles = {
+  private peerFiles: PeerFiles = {
     id: secureId(),
     items: [],
   };
+
+  filesReactor = new ReactSuperReactsWow(() => ({
+    myFiles: this.myFiles.items, // bad name...
+    peerFiles: this.peerFiles.items,
+  }));
+
   // connect on constructor
   constructor(roomParams: RoomParams, options: PeerConnectionOptions) {
     this.peerChannel = new PeerChannelImpl(
@@ -76,8 +82,10 @@ export class Core {
     this.filesToUpload.push(...files);
 
     const parsedFiles = files.map(parseFile);
+
     this.myFiles.id = secureId();
     this.myFiles.items = [...this.myFiles.items, ...parsedFiles];
+    this.filesReactor.notifyListeners();
 
     if (this.peerChannel.canSend) {
       // then send updated data
@@ -138,6 +146,8 @@ export class Core {
         break;
       case "filesUpdated":
         this.peerFiles = message.value;
+        this.filesReactor.notifyListeners();
+
         console.log("peer said the files are", {
           id: this.peerFiles.id,
           count: this.peerFiles.items.length,
@@ -165,7 +175,6 @@ export class Core {
 }
 
 // many listeners
-
 export class ReactSubscribable<T> {
   constructor(private _value: T) {}
 
@@ -181,6 +190,37 @@ export class ReactSubscribable<T> {
   set(value: T) {
     this._value = value;
     this.notifyListeners();
+  }
+
+  subscribe(callback: (value: T) => void): () => void {
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  }
+}
+
+// many listeners
+export class ReactPleaseReact {
+  constructor() {}
+
+  private listeners = new Set<() => void>();
+  public notifyListeners() {
+    this.listeners.forEach((cb) => cb());
+  }
+
+  subscribe(callback: () => void): () => void {
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  }
+}
+
+// many listeners
+export class ReactSuperReactsWow<T> {
+  constructor(private computeFn: () => T) {}
+
+  private listeners = new Set<(value: T) => void>();
+  public notifyListeners() {
+    const value = this.computeFn();
+    this.listeners.forEach((cb) => cb(value));
   }
 
   subscribe(callback: (value: T) => void): () => void {

@@ -3,7 +3,7 @@ import { stringifyRoomParams } from "../utils/roomParams";
 
 import { getIceServers } from "../peer/iceServers";
 
-import { Core, PeerConnectionState } from "../peer/Core";
+import { Core, FileItem, PeerConnectionState } from "../peer/Core";
 import { useRoomParams2 } from "./useRoomParams";
 
 export function useRoom() {
@@ -12,6 +12,8 @@ export function useRoom() {
   const [core, setCore] = useState<Core>(null as any);
   const [connectionState, setConnectionState] =
     useState<PeerConnectionState>("offline");
+  const [myFiles, setMyFiles] = useState<FileItem[]>([]);
+  const [peerFiles, setPeerFiles] = useState<FileItem[]>([]);
 
   useEffect(() => {
     console.log("intializing new core", roomParams);
@@ -23,6 +25,13 @@ export function useRoom() {
     const connectionUnsub = newCore.connectionState.subscribe((state) => {
       setConnectionState(state);
     });
+
+    const filesUnsub = newCore.filesReactor.subscribe(
+      ({ myFiles, peerFiles }) => {
+        setMyFiles(myFiles);
+        setPeerFiles(peerFiles);
+      },
+    );
 
     setShareCode(
       stringifyRoomParams({
@@ -36,6 +45,7 @@ export function useRoom() {
     return () => {
       newCore.dispose();
       connectionUnsub();
+      filesUnsub();
     };
   }, [roomParams]);
 
@@ -53,8 +63,8 @@ export function useRoom() {
   return {
     roomParams,
     connectionState,
-    myFiles: core?.myFiles.items ?? [], // TODO: make these reactive
-    peerFiles: core?.peerFiles.items ?? [],
+    myFiles,
+    peerFiles,
     shareCode,
     addMyFiles,
     startDownload,
