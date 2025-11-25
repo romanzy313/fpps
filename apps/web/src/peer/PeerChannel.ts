@@ -217,6 +217,8 @@ export class PeerChannelImpl {
           break;
         case "failed":
           newState = "failed";
+          // this is ICE type of failure... dont use it for reconnects
+          this.connect();
           break;
         case "closed":
           newState = "disconnected";

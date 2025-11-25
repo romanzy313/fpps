@@ -16,7 +16,6 @@ export function useRoom() {
   const [peerFiles, setPeerFiles] = useState<FileItem[]>([]);
 
   useEffect(() => {
-    console.log("intializing new core", roomParams);
     const newCore = new Core(roomParams, {
       iceServers: getIceServers("Dev"),
     });

@@ -52,6 +52,11 @@ export class Core {
 
   // connect on constructor
   constructor(roomParams: RoomParams, options: PeerConnectionOptions) {
+    console.log("intializing new core", {
+      roomParams,
+      options,
+    });
+
     this.peerChannel = new PeerChannelImpl(
       roomParams,
       {
@@ -125,7 +130,6 @@ export class Core {
       // issue a reconnect
       // this logic should really be inside the peer channel. Automatic reconnects are a thing sendToPeerWithBackpressure
       // the ping pong is handled here though?
-      this.peerChannel.connect();
     } else if (status === "connecting") {
       this.connectionState.set("connecting");
     } else if (status === "disconnected") {

@@ -2,7 +2,6 @@ import "./style.css";
 import { useState } from "preact/hooks";
 import { apiHealth } from "../../api";
 import { config } from "../../config";
-import { useRoomParams } from "../../hooks/useRoomParams";
 import { secureId } from "../../utils/secureId";
 import { useLocation } from "preact-iso";
 import { isValidRoomHash, stringifyRoomParams } from "../../utils/roomParams";

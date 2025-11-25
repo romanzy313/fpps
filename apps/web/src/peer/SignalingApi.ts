@@ -7,11 +7,13 @@ import {
 import { config } from "../config";
 import { RoomParams } from "../utils/roomParams";
 
+const POLL_INTERVAL_MS = 3000; // Poll every second
+const NON_INITIATOR_WAIT_MS = 5000; // Wait 5 seconds before first poll if not initiator
+
 export class SignalingApi {
   private isOn = false;
   private pollTimeout: NodeJS.Timeout | null = null;
   private pollIntervalMs = 3000; // Poll every second
-  private nonInitiatorWaitMs = 3000; // Wait 5 seconds before first poll if not initiator
   private sendQueue: P2PSignalingPayload[] = [];
   private isFetching = false;
   private fetchQueue: (() => Promise<void>)[] = [];
@@ -27,7 +29,7 @@ export class SignalingApi {
 
     if (!this.roomParams.isInitiator) {
       // Non-initiator waits before first poll
-      this.schedulePoll(this.nonInitiatorWaitMs);
+      this.schedulePoll(NON_INITIATOR_WAIT_MS);
     }
     // Initiator doesn't poll until first send
   }
@@ -64,20 +66,18 @@ export class SignalingApi {
     });
   }
 
-  private schedulePoll(delayMs?: number) {
+  private schedulePoll(delayMs: number) {
     if (!this.isOn) return;
 
     if (this.pollTimeout) {
       clearTimeout(this.pollTimeout);
     }
 
-    const delay = delayMs !== undefined ? delayMs : this.pollIntervalMs;
-
     this.pollTimeout = setTimeout(() => {
       this.enqueueFetch(async () => {
         await this.pollOrSend();
       });
-    }, delay);
+    }, delayMs);
   }
 
   private async enqueueFetch(fetchFn: () => Promise<void>) {
@@ -99,6 +99,7 @@ export class SignalingApi {
       }
     } catch (error) {
       console.error("Signaling error:", error);
+      await this.stop();
     } finally {
       this.isFetching = false;
 
@@ -134,11 +135,12 @@ export class SignalingApi {
         }
       }
     } catch (error) {
+      // TODO: this needs display in UI
       console.error("Polling/sending error:", error);
     } finally {
       // Schedule next poll
       if (this.isOn) {
-        this.schedulePoll();
+        this.schedulePoll(POLL_INTERVAL_MS);
       }
     }
   }

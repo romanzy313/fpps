@@ -11,6 +11,7 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
+import { corsOptionsHeaders, corsRouteHeaders } from './cors';
 import { signaling } from './functions';
 import { KvStore, KvStoreMemoryRepo } from './kvStore';
 
@@ -22,7 +23,12 @@ export default {
 
 		if (request.method === 'GET' && url.pathname === '/api/health') {
 			console.log('Health check OK');
-			return new Response('OK');
+			return new Response('OK', {
+				headers: {
+					'Content-Type': 'text/plain',
+					...corsRouteHeaders,
+				},
+			});
 		} else if (request.method === 'POST' && url.pathname === '/api/signaling') {
 			// TODO: all of this needs to be try-catched
 			const signalingReq = await request.json(); // TODO: validate me
@@ -35,6 +41,16 @@ export default {
 
 			return new Response(resJson, {
 				status: 200,
+				headers: {
+					'Content-Type': 'application/json',
+					...corsRouteHeaders,
+				},
+			});
+		} else if (request.method === 'OPTIONS') {
+			return new Response(null, {
+				headers: {
+					...corsOptionsHeaders,
+				},
 			});
 		}
 

@@ -1,8 +1,21 @@
 import { useEffect, useState } from "preact/hooks";
-import { parseRoomParams } from "../utils/roomParams";
+import { parseRoomParams, RoomParams } from "../utils/roomParams";
+
+function ssrRoomParams(): RoomParams {
+  return {
+    peerId: "",
+    myId: "",
+    secret: "",
+    isInitiator: false,
+  };
+}
 
 export function useRoomParams2() {
-  const [roomParams, setRoomParams] = useState(
+  if (typeof window === "undefined") {
+    return ssrRoomParams();
+  }
+
+  const [roomParams, setRoomParams] = useState<RoomParams>(
     parseRoomParams(window.location.hash.substring(1)),
   );
 
