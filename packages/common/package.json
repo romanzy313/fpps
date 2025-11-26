@@ -3,10 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "src/index.ts",
-  "scripts": {
-    "test": "vitest --run",
-    "dev:test": "vitest"
-  },
+  "scripts": {},
   "keywords": [],
   "author": "Roman Volovoy",
   "license": "AGPL-3.0",

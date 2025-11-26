@@ -4,7 +4,8 @@
   "description": "ffps (name TBD) application to share files using peer-to-peer browser technologies",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "pnpm run --recursive --stream --aggregate-output --color test",
+    "dev:test": "pnpm run --recursive --stream --aggregate-output --color dev:test",
     "lint": "pnpm run --recursive --stream --aggregate-output --color lint",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter cloudflare-workers dev"
