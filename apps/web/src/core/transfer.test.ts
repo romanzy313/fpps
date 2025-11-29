@@ -32,17 +32,17 @@ describe("TestPeerChannels", () => {
 
 describe("Uploader", () => {
   let testChannels: TestPeerChannels;
+  let uploader: Uploader;
+  let downloader: Downloader;
+
   let writableStream: WritableStream<Uint8Array>;
   let files: {
     name: string;
     data: Uint8Array;
   }[] = [];
   let writableClosed: boolean = false;
-  // const written: Uint8Array[] = [];
 
-  beforeEach(() => {
-    testChannels = new TestPeerChannels(0.05);
-
+  function newWritableStream() {
     files = [];
 
     const unzipper = new Unzip((file) => {
@@ -59,6 +59,7 @@ describe("Uploader", () => {
     });
     unzipper.register(UnzipInflate);
 
+    writableClosed = false;
     writableStream = new WritableStream<Uint8Array>({
       write(chunk) {
         unzipper.push(chunk);
@@ -66,18 +67,29 @@ describe("Uploader", () => {
       close() {
         writableClosed = true;
       },
+      abort() {
+        writableClosed = true;
+      },
     });
+  }
+
+  beforeEach(() => {
+    testChannels = new TestPeerChannels(0.05);
+
+    uploader = new Uploader(testChannels.getPeerChannel("a"));
+    downloader = new Downloader(testChannels.getPeerChannel("b"));
+
+    newWritableStream();
   });
 
   it("should upload a file", async () => {
     const file = new File(["42"], "test.txt");
-    const uploader = new Uploader(testChannels.getPeerChannel("a"), [file]);
-    const downloader = new Downloader(
-      testChannels.getPeerChannel("b"),
-      writableStream,
-    );
+    uploader.setFiles([file]);
 
-    expect(uploader.getStatus()).toBe("uploading");
+    expect(uploader.getStatus()).toBe("idle");
+    expect(downloader.getStatus()).toBe("idle");
+
+    downloader.start(writableStream);
 
     await vi.waitUntil(() => uploader.getStatus() === "done");
     await vi.waitUntil(() => downloader.getStatus() === "done");
@@ -93,13 +105,13 @@ describe("Uploader", () => {
 
   it("should upload chunked file", async () => {
     const file = new File(["why ", "hello ", "there?"], "test.txt");
-    const uploader = new Uploader(testChannels.getPeerChannel("a"), [file]);
-    const downloader = new Downloader(
-      testChannels.getPeerChannel("b"),
-      writableStream,
-    );
 
-    expect(uploader.getStatus()).toBe("uploading");
+    uploader.setFiles([file]);
+
+    expect(uploader.getStatus()).toBe("idle");
+    expect(downloader.getStatus()).toBe("idle");
+
+    downloader.start(writableStream);
 
     await vi.waitUntil(() => uploader.getStatus() === "done");
     await vi.waitUntil(() => downloader.getStatus() === "done");
@@ -116,20 +128,15 @@ describe("Uploader", () => {
   it("should upload many chunked files", async () => {
     const file1 = new File(["why ", "hello ", "there?"], "test1.txt");
     const file2 = new File(["are ", "we ", "there ", "yet?"], "test2.txt");
-    const uploader = new Uploader(testChannels.getPeerChannel("a"), [
-      file1,
-      file2,
-    ]);
-    const downloader = new Downloader(
-      testChannels.getPeerChannel("b"),
-      writableStream,
-    );
 
-    expect(uploader.getStatus()).toBe("uploading");
+    uploader.setFiles([file1, file2]);
 
-    await vi.waitUntil(() => uploader.getStatus() === "done", {
-      timeout: 3_000,
-    });
+    expect(downloader.getStatus()).toBe("idle");
+    expect(uploader.getStatus()).toBe("idle");
+
+    downloader.start(writableStream);
+
+    await vi.waitUntil(() => uploader.getStatus() === "done");
     await vi.waitUntil(() => downloader.getStatus() === "done");
 
     await vi.waitUntil(() => writableClosed);
@@ -147,22 +154,126 @@ describe("Uploader", () => {
 
   it("should upload many large chunked file", async () => {
     const file3 = generateTestFile(20, "test-large"); // 20 kb
-    // console.log("FILE3", file3, "SIZE", (await file3.slice().bytes()).length);
-    const uploader = new Uploader(testChannels.getPeerChannel("a"), [file3]);
-    const downloader = new Downloader(
-      testChannels.getPeerChannel("b"),
-      writableStream,
-    );
 
-    expect(uploader.getStatus()).toBe("uploading");
+    uploader.setFiles([file3, file3]);
+
+    expect(uploader.getStatus()).toBe("idle");
+    expect(downloader.getStatus()).toBe("idle");
+
+    downloader.start(writableStream);
 
     await vi.waitUntil(() => uploader.getStatus() === "done");
     await vi.waitUntil(() => downloader.getStatus() === "done");
 
     await vi.waitUntil(() => writableClosed);
 
-    expect(files.length).toBe(1);
+    expect(files.length).toBe(2);
     expect(files[0]!.name).toBe("test-large");
     expect(files[0]!.data.length).toEqual(20 * 1024);
+    expect(files[0]!.data).toEqual(await file3.bytes());
+  });
+
+  it("should start a second transfer", async () => {
+    const file1 = new File(["first"], "first.txt");
+
+    uploader.setFiles([file1]);
+
+    expect(uploader.getStatus()).toBe("idle");
+    expect(downloader.getStatus()).toBe("idle");
+
+    downloader.start(writableStream);
+
+    await vi.waitUntil(() => uploader.getStatus() === "done");
+    await vi.waitUntil(() => downloader.getStatus() === "done");
+    await vi.waitUntil(() => writableClosed);
+
+    expect(files.length).toBe(1);
+    expect(files[0]!.name).toBe("first.txt");
+    expect(files[0]!.data).toEqual(
+      new Uint8Array(new TextEncoder().encode("first")),
+    );
+
+    const file2 = new File(["second"], "second.txt");
+
+    uploader.setFiles([file2]);
+
+    newWritableStream();
+    downloader.start(writableStream);
+
+    await vi.waitUntil(() => uploader.getStatus() === "done");
+    await vi.waitUntil(() => downloader.getStatus() === "done");
+
+    expect(files.length).toBe(1);
+    expect(files[0]!.name).toBe("second.txt");
+  });
+
+  it("should abort transfer via uploader", async () => {
+    const file3 = generateTestFile(10_000, "test-large"); // 20 kb
+
+    uploader.setFiles([file3]);
+
+    expect(uploader.getStatus()).toBe("idle");
+    expect(downloader.getStatus()).toBe("idle");
+
+    downloader.start(writableStream);
+
+    await vi.waitUntil(() => uploader.getStatus() === "uploading", {
+      timeout: 1000,
+      interval: 1,
+    });
+    uploader.abort();
+
+    await vi.waitUntil(() => uploader.getStatus() === "aborted");
+    await vi.waitUntil(() => downloader.getStatus() === "aborted");
+
+    await vi.waitUntil(() => writableClosed);
+
+    // can start again
+    const file = new File(["restart"], "restart.txt");
+    uploader.setFiles([file]);
+
+    newWritableStream();
+    downloader.start(writableStream);
+
+    await vi.waitUntil(() => uploader.getStatus() === "done");
+    await vi.waitUntil(() => downloader.getStatus() === "done");
+
+    expect(files.length).toBe(1);
+    expect(files[0]!.name).toBe("restart.txt");
+  });
+
+  it("should abort transfer via downloader", async () => {
+    const file3 = generateTestFile(10_000, "test-large"); // 20 kb
+
+    uploader.setFiles([file3]);
+
+    expect(uploader.getStatus()).toBe("idle");
+    expect(downloader.getStatus()).toBe("idle");
+
+    downloader.start(writableStream);
+
+    await vi.waitUntil(() => downloader.getStatus() === "downloading", {
+      timeout: 1000,
+      interval: 1,
+    });
+    downloader.abort();
+
+    await vi.waitUntil(() => uploader.getStatus() === "aborted");
+    await vi.waitUntil(() => downloader.getStatus() === "aborted");
+
+    await vi.waitUntil(() => writableClosed);
+
+    // can start again
+    const file = new File(["restart"], "restart.txt");
+    uploader.setFiles([file]);
+
+    newWritableStream();
+    downloader.start(writableStream);
+
+    await vi.waitUntil(() => uploader.getStatus() === "done");
+    await vi.waitUntil(() => downloader.getStatus() === "done");
+
+    expect(files.length).toBe(1);
+    expect(files[0]!.name).toBe("restart.txt");
   });
 });

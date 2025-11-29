@@ -20,39 +20,31 @@ export type TransferStats = {
 };
 
 export type PeerMessage =
-  | {
-      type: "ping";
-    }
-  | {
-      type: "transfer-start";
-      value: { totalFileCount: number; totalSizeBytes: number };
-    }
+  | { type: "ping" }
+  | { type: "transfer-started" }
+  | { type: "transfer-start" }
   | { type: "transfer-chunk"; value: Uint8Array }
   | { type: "transfer-stats"; value: TransferStats }
-  | { type: "transfer-aborted" }
+  | { type: "transfer-abort" }
   | { type: "transfer-done" };
 
 export class TransferProtocol {
   static encode(message: PeerMessage): Uint8Array {
     switch (message.type) {
       case "ping":
-        return new TextEncoder().encode("0");
+        return new TextEncoder().encode("p0");
       case "transfer-start":
-        return new TextEncoder().encode(
-          "1" +
-            JSON.stringify([
-              message.value.totalFileCount,
-              message.value.totalSizeBytes,
-            ]),
-        );
+        return new TextEncoder().encode("t0");
+      case "transfer-started":
+        return new TextEncoder().encode("t1");
       case "transfer-chunk":
         return new Uint8Array([
-          ...new TextEncoder().encode("2"),
+          ...new TextEncoder().encode("t2"),
           ...message.value,
         ]);
       case "transfer-stats":
         return new Uint8Array([
-          ...new TextEncoder().encode("3"),
+          ...new TextEncoder().encode("t3"),
           ...new TextEncoder().encode(
             JSON.stringify([
               message.value.currentIndex,
@@ -62,10 +54,10 @@ export class TransferProtocol {
             ]),
           ),
         ]);
-      case "transfer-aborted":
-        return new TextEncoder().encode("4");
+      case "transfer-abort":
+        return new TextEncoder().encode("t4");
       case "transfer-done":
-        return new TextEncoder().encode("5");
+        return new TextEncoder().encode("t5");
     }
   }
   static decode(data: Uint8Array): PeerMessage {
@@ -74,40 +66,34 @@ export class TransferProtocol {
     }
 
     const decoder = new TextDecoder();
-    const id = data.slice(0, 5);
+    const id = data.slice(0, 2);
     const type = decoder.decode(id);
 
-    const rest = data.slice(1);
+    const rest = data.slice(2);
     function json() {
       return JSON.parse(decoder.decode(rest));
     }
 
     switch (type) {
-      case "0":
+      case "p0":
         return { type: "ping" };
-      case "1": {
-        const [totalFileCount, totalSizeBytes] = json();
-        return {
-          type: "transfer-start",
-          value: { totalFileCount, totalSizeBytes },
-        };
-      }
-      case "2": {
+      case "t0":
+        return { type: "transfer-start" };
+      case "t1":
+        return { type: "transfer-started" };
+      case "t2":
         return { type: "transfer-chunk", value: rest };
-      }
-      case "3": {
+      case "t3": {
         const [currentIndex, totalFiles, transferredBytes, totalBytes] = json();
         return {
           type: "transfer-stats",
           value: { currentIndex, totalFiles, transferredBytes, totalBytes },
         };
       }
-      case "4": {
-        return { type: "transfer-aborted" };
-      }
-      case "5": {
+      case "t4":
+        return { type: "transfer-abort" };
+      case "t5":
         return { type: "transfer-done" };
-      }
       default:
         throw new Error("invalid payload type" + type);
     }

@@ -1,5 +1,5 @@
 import { Zip } from "fflate";
-import { PeerChannel, TransferStats } from "./PeerChannel";
+import { PeerChannel, PeerMessage, TransferStats } from "./PeerChannel";
 import { ZipDeflate } from "fflate/node";
 
 export class Uploader {
@@ -8,31 +8,22 @@ export class Uploader {
   private READ_CHUNK_SIZE = 777; // temp for now
   private PROGRESS_EVERY_BYTES = this.READ_CHUNK_SIZE * 10;
 
-  private status: "uploading" | "done" = "uploading";
-  private zip: Zip;
+  private files: File[] = [];
+  private status: "idle" | "uploading" | "done" | "aborted" = "idle";
+  private zip: Zip | null = null;
+  private underBackpressure = false;
+  private currentFileIndex = 0;
+  private totalProcessedBytes = 0;
+  private lastStatSentBytes = 0;
+  private current: {
+    file: File;
+    deflate: ZipDeflate;
+    progress: number;
+  } | null = null;
 
-  constructor(
-    private peerChannel: PeerChannel,
-    private files: File[],
-  ) {
+  constructor(private peerChannel: PeerChannel) {
     peerChannel.listenOnDrained(this.onDrained.bind(this));
-
-    this.zip = new Zip((err, data, done) => {
-      if (err) {
-        // TODO: bubble error to the class variable
-        throw new Error(`Zip error: ${err.message}`);
-      }
-
-      // backpressure is not managed here
-      this.peerChannel.send({ type: "transfer-chunk", value: data });
-
-      if (done) {
-        this.peerChannel.send({ type: "transfer-done" });
-        this.status = "done";
-      }
-    });
-
-    this.start();
+    peerChannel.listenOnData(this.onData.bind(this));
   }
 
   get totalSizeBytes(): number {
@@ -57,17 +48,60 @@ export class Uploader {
     };
   }
 
+  setFiles(files: File[]) {
+    if (this.status === "uploading") {
+      throw new Error("Cannot set files while uploading");
+    }
+    this.files = files;
+  }
+
+  private isAborted() {
+    return this.status === "aborted";
+  }
+
+  private resetInternals() {
+    this.zip = null;
+    this.current = null;
+    this.underBackpressure = false;
+  }
+
+  private done() {
+    this.peerChannel.send({ type: "transfer-stats", value: this.getStats() });
+    this.peerChannel.send({ type: "transfer-done" });
+    this.status = "done";
+    this.resetInternals();
+  }
+
   private start() {
     if (!this.peerChannel.isReady()) {
       throw new Error("Peer channel is not ready to upload");
     }
 
+    if (this.status === "uploading") {
+      throw new Error("Cannot start transfer: uploader is already uploading");
+    }
+    this.status = "uploading";
+
+    this.zip = new Zip((err, data, done) => {
+      if (err) {
+        // TODO: bubble error to the class variable
+        throw new Error(`Zip error: ${err.message}`);
+      }
+
+      // backpressure is not managed here
+      this.peerChannel.send({ type: "transfer-chunk", value: data });
+
+      if (done) {
+        this.done();
+      }
+    });
+
     this.peerChannel.send({
-      type: "transfer-start",
-      value: {
-        totalFileCount: this.totalFileCount,
-        totalSizeBytes: this.totalSizeBytes,
-      },
+      type: "transfer-started",
+    });
+    this.peerChannel.send({
+      type: "transfer-stats",
+      value: this.getStats(),
     });
     this.advance();
     this.process();
@@ -79,19 +113,17 @@ export class Uploader {
   //  --- 3) send progress every x Chunks
   // 4) send done
 
-  private underBackpressure = false;
-  private currentFileIndex = 0;
-  private totalProcessedBytes = 0;
-  private lastStatSentBytes = 0;
-  private current: {
-    file: File;
-    deflate: ZipDeflate;
-    progress: number;
-  } | null = null;
-
   // returns true if next files exists
   // true value means processing must continue
   private advance(): boolean {
+    if (this.isAborted()) {
+      return false;
+    }
+
+    if (!this.zip) {
+      throw new Error("No zip instance");
+    }
+
     if (!this.current) {
       // initialization
       if (this.files.length === 0) {
@@ -136,6 +168,10 @@ export class Uploader {
   }
 
   private process() {
+    if (this.isAborted()) {
+      return;
+    }
+
     if (this.underBackpressure) {
       throw new Error("Cannot process under backpressure");
     }
@@ -203,6 +239,32 @@ export class Uploader {
       });
   }
 
+  abort() {
+    this.internalAbort();
+    this.peerChannel.send({ type: "transfer-abort" });
+  }
+
+  private internalAbort() {
+    if (this.status !== "uploading") {
+      throw new Error(
+        "Cannot abort transfer: uploader is not in uploading state",
+      );
+    }
+    this.status = "aborted";
+    this.resetInternals();
+  }
+
+  private onData(message: PeerMessage) {
+    switch (message.type) {
+      case "transfer-start":
+        this.start();
+        break;
+      case "transfer-abort":
+        this.internalAbort();
+        break;
+    }
+  }
+
   private onDrained() {
     if (this.underBackpressure) {
       this.underBackpressure = false;
@@ -210,10 +272,5 @@ export class Uploader {
     } else {
       console.warn("DRAINED BUT WAS NOT UNDER BACKPRESSURE");
     }
-  }
-
-  // will stop sending
-  forceStop() {
-    throw new Error("Implement me");
   }
 }

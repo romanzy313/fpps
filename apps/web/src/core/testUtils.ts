@@ -5,7 +5,7 @@ export function generateTestFile(kbSize: number, name: string): File {
   // 256byte chunk
   function chunk() {
     const twoFifty = new Uint8Array(256);
-    // fill it with values of 0...to 256 in order
+    // fill it with values of 0...to 255 in order
     for (let i = 0; i < twoFifty.length; i++) {
       twoFifty[i] = i;
     }
@@ -19,10 +19,6 @@ export function generateTestFile(kbSize: number, name: string): File {
   const file = new File(all, name);
   return file;
 }
-
-// export function isGeneratedTestFile(kbSize: number): boolean {
-//   return kbSize > 0;
-// }
 
 export function getTestFilePath(name: string): string {
   return path.join(__dirname, "__testdata__", name);
