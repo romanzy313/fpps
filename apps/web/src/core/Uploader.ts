@@ -1,15 +1,21 @@
-import { Zip } from "fflate";
-import { PeerChannel, PeerMessage, TransferStats } from "./PeerChannel";
-import { ZipDeflate } from "fflate/node";
+import { Zip, ZipDeflate } from "fflate/browser";
+import {
+  PeerChannel,
+  PeerMessage,
+  TransferStats,
+  TransferStatus,
+} from "./PeerChannel";
+import { ValueSubscriber } from "../utils/ValueSubscriber";
 
 export class Uploader {
   // config vars
-  // private READ_CHUNK_SIZE = 8096;
-  private READ_CHUNK_SIZE = 777; // temp for now
-  private PROGRESS_EVERY_BYTES = this.READ_CHUNK_SIZE * 10;
+  private READ_CHUNK_SIZE = 1 << 13; // 8kb chunk size
+  // private READ_CHUNK_SIZE = 777; // temp for now
+  // TODO: send the progress every 0.5 seconds!
+  private PROGRESS_EVERY_BYTES = this.READ_CHUNK_SIZE * 16;
 
   private files: File[] = [];
-  private status: "idle" | "transfer" | "done" | "aborted" = "idle";
+  status = new ValueSubscriber<TransferStatus>("idle");
   private zip: Zip | null = null;
   private underBackpressure = false;
   private currentFileIndex = 0;
@@ -35,10 +41,6 @@ export class Uploader {
     return this.files.length;
   }
 
-  getStatus() {
-    return this.status;
-  }
-
   getStats(): TransferStats {
     return {
       currentIndex: this.currentFileIndex,
@@ -48,27 +50,33 @@ export class Uploader {
     };
   }
 
+  getFiles() {
+    return this.files;
+  }
+
   setFiles(files: File[]) {
-    if (this.status === "transfer") {
+    if (this.status.value === "transfer") {
       throw new Error("Cannot set files while uploading");
     }
     this.files = files;
   }
 
   private isAborted() {
-    return this.status === "aborted";
+    return this.status.value === "aborted";
   }
 
   private resetInternals() {
     this.zip = null;
     this.current = null;
-    this.underBackpressure = false;
   }
 
   private done() {
+    console.log("DONE SENDING STATS", {
+      value: this.getStats(),
+    });
     this.peerChannel.send({ type: "transfer-stats", value: this.getStats() });
     this.peerChannel.send({ type: "transfer-done" });
-    this.status = "done";
+    this.status.setValue("done");
     this.resetInternals();
   }
 
@@ -77,10 +85,10 @@ export class Uploader {
       throw new Error("Peer channel is not ready to upload");
     }
 
-    if (this.status === "transfer") {
+    if (this.status.value === "transfer") {
       throw new Error("Cannot start transfer: uploader is already uploading");
     }
-    this.status = "transfer";
+    this.status.setValue("transfer");
 
     this.zip = new Zip((err, data, done) => {
       if (err) {
@@ -88,10 +96,19 @@ export class Uploader {
         throw new Error(`Zip error: ${err.message}`);
       }
 
+      console.log(
+        "ZIP CHUNK OF SIZE",
+        data.byteLength,
+        "SENT",
+        "IS DONE?",
+        done,
+      );
       // backpressure is not managed here
       this.peerChannel.send({ type: "transfer-chunk", value: data });
 
       if (done) {
+        console.log("ZIP WAS ENDED, DONE");
+
         this.done();
       }
     });
@@ -131,7 +148,7 @@ export class Uploader {
       }
       const file = this.files[0]!;
       const deflate = new ZipDeflate(file.webkitRelativePath || file.name, {
-        level: 9,
+        level: 6,
       });
       this.zip.add(deflate);
 
@@ -144,9 +161,12 @@ export class Uploader {
       return true;
     }
 
-    const file = this.files[++this.currentFileIndex];
-    if (!file) {
+    this.currentFileIndex++;
+
+    const file = this.files[this.currentFileIndex];
+    if (!file || this.currentFileIndex >= this.files.length) {
       // reached the end
+      console.log("ENDING ZIP");
       this.current = null;
       this.zip.end();
 
@@ -154,7 +174,7 @@ export class Uploader {
     }
 
     const deflate = new ZipDeflate(file.webkitRelativePath || file.name, {
-      level: 9,
+      level: 6,
     });
     this.zip.add(deflate);
 
@@ -195,48 +215,65 @@ export class Uploader {
     const start = this.current.progress;
     const end = Math.min(start + this.READ_CHUNK_SIZE, file.size);
 
-    if (start === file.size) {
-      if (this.advance()) {
-        this.process();
+    const slice = file.slice(start, end);
+    slice.arrayBuffer().then((ab) => {
+      if (this.isAborted()) {
         return;
       }
-    }
+      if (!this.current) {
+        throw new Error("Assertion error: No current file 2");
+      }
 
-    file
-      .slice(start, end)
-      .bytes()
-      .then((bytes) => {
-        if (!this.current) {
-          throw new Error("Assertion error: No current file 2");
-        }
-        const uncompressedBytes = end - start;
-        this.current.progress += uncompressedBytes;
-        this.totalProcessedBytes += uncompressedBytes;
+      const bytes = new Uint8Array(ab);
+      const uncompressedBytes = end - start;
+      this.current.progress += uncompressedBytes;
+      this.totalProcessedBytes += uncompressedBytes;
 
-        const done = end === file.size;
-        deflate.push(bytes, done);
+      const done = end === file.size;
+      deflate.push(bytes, done);
 
-        // stats handling here
-        if (
-          !done &&
-          this.totalProcessedBytes - this.lastStatSentBytes >
-            this.PROGRESS_EVERY_BYTES
-        ) {
-          this.lastStatSentBytes = this.totalProcessedBytes;
-          this.peerChannel.send({
-            type: "transfer-stats",
-            value: this.getStats(),
-          });
-        }
+      // stats handling here
+      if (
+        !done &&
+        this.totalProcessedBytes - this.lastStatSentBytes >
+          this.PROGRESS_EVERY_BYTES
+      ) {
+        this.lastStatSentBytes = this.totalProcessedBytes;
+        // console.log("PROGRESS SEND STATS", {
+        //   value: this.getStats(),
+        // });
+        this.peerChannel.send({
+          type: "transfer-stats",
+          value: this.getStats(),
+        });
+      }
 
-        if (!done) {
-          return this.process();
-        }
+      // console.log(
+      //   "PROCESSED FILE",
+      //   "TOTAL COUNT:",
+      //   this.currentFileIndex,
+      //   "/",
+      //   this.totalFileCount,
+      //   "TOTAL SIZES:",
+      //   this.totalProcessedBytes,
+      //   "/",
+      //   this.totalSizeBytes,
+      //   "THIS FILE",
+      //   this.current.file.name,
+      //   this.current.progress,
+      //   "/",
+      //   this.current.file.size,
+      //   "IS DONE",
+      //   done,
+      // );
+      if (!done) {
+        return this.process();
+      }
 
-        if (this.advance()) {
-          this.process();
-        }
-      });
+      if (this.advance()) {
+        this.process();
+      }
+    });
   }
 
   abort() {
@@ -245,12 +282,12 @@ export class Uploader {
   }
 
   private internalAbort() {
-    if (this.status !== "transfer") {
+    if (this.status.value !== "transfer") {
       throw new Error(
         "Cannot abort transfer: uploader is not in uploading state",
       );
     }
-    this.status = "aborted";
+    this.status.setValue("aborted");
     this.resetInternals();
   }
 
@@ -272,5 +309,9 @@ export class Uploader {
     } else {
       console.warn("DRAINED BUT WAS NOT UNDER BACKPRESSURE");
     }
+  }
+
+  dispose() {
+    this.status.dispose();
   }
 }

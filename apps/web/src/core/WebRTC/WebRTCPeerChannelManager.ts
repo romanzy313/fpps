@@ -1,52 +1,30 @@
 import { P2PSignalingPayload } from "@fpps/common";
-import { RoomParams } from "../utils/roomParams";
+import { RoomParams } from "../../utils/roomParams";
+import { PeerChannel, PeerMessage, TransferProtocol } from "../PeerChannel";
 import { SignalingApi } from "./SignalingApi";
-import { peerMessageFromBytes } from "./peerMessage";
+import { MultiSubscriber } from "../../utils/MultiSubscriber";
 
 const PING_TIMEOUT = 10_000;
 const PING_INTERVAL = 5_000;
+const BACKPRESSURE_THRESHOLD = 1 << 20; // 1 Mb
 
 export type PeerConnectionStatus =
   | "connecting"
   | "connected"
   | "disconnected"
   | "failed";
-// | "closed";
-
-// this could be a bad idea...
-// use a closer api... no async iterators, pure callback goodness
-// export interface PeerChannel {
-//   connect(roomParams: RoomParams): Promise<void>;
-//   onConnectionStateChange(cb: (status: PeerConnectionStatus) => void): void;
-//   enqueue(message: ArrayBuffer): Promise<{
-//     success: boolean;
-//   }>; // if no success, the message needs to be enqueued again?
-//   read(): Promise<{
-//     done: boolean;
-//     data: ArrayBuffer;
-//   }>; // this works like a reader. what happens during disconnects?
-// }
 
 export interface PeerConnectionOptions {
+  roomParams: RoomParams;
   iceServers: RTCIceServer[]; // TODO: use sensible free ICE servers https://www.metered.ca/blog/list-of-webrtc-ice-servers/
 }
 
 export type PeerChannelCallbacks = {
-  // when failed is sent, the outside needs to connect again
   onConnectionStateChange: (status: PeerConnectionStatus) => void;
-  // onMessageReceived: (message: ArrayBuffer) => void;
-  onMessageReceived: (message: Uint8Array) => void;
-  onDataDrained: () => void;
   onError: (message: string) => void;
-  sendPing: () => void;
 };
 
-// TODO: will reconnects need to recreate SignalingApi?
-// TODO: can implement the perfect negotication pattern as documented here:
-// https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Perfect_negotiation
-// the initiator can be impolite, while the joiner is polite
-// It works okay right now, but sometimes requires a refresh
-export class PeerChannelImpl {
+export class WebRTCPeerChannelManager {
   private pc: RTCPeerConnection | null = null;
   private signalingApi: SignalingApi | null = null;
   private dataChannel: RTCDataChannel | null = null;
@@ -54,18 +32,44 @@ export class PeerChannelImpl {
   private peerPingTimeout: NodeJS.Timeout | null = null;
   private myPingInterval: NodeJS.Timeout | null = null;
 
+  private connectionStatus: PeerConnectionStatus = "disconnected";
+  _messageSubscribers = new MultiSubscriber<PeerMessage>();
+  _drainSubscribers = new MultiSubscriber<void>();
+
+  private peerChannel = new WebRTCPeerChannel(this);
+
   constructor(
-    private roomParams: RoomParams,
-    private callbacks: PeerChannelCallbacks,
     private options: PeerConnectionOptions,
-  ) {
-    this.connect();
+    private callbacks: PeerChannelCallbacks,
+  ) {}
+
+  dispose() {
+    this._messageSubscribers.dispose();
+    this._drainSubscribers.dispose();
+    this.close();
+  }
+
+  getPeerChannel(): PeerChannel {
+    return this.peerChannel;
+  }
+
+  getRTCStats(): Promise<RTCStatsReport | null> {
+    return this.pc?.getStats() ?? Promise.resolve(null);
+  }
+
+  getConnectionStatus() {
+    return this.connectionStatus;
+  }
+
+  private setConnectionStatus(status: PeerConnectionStatus) {
+    this.connectionStatus = status;
+    this.callbacks.onConnectionStateChange(status);
   }
 
   async connect() {
     this.init();
 
-    if (this.roomParams.isInitiator) {
+    if (this.options.roomParams.isInitiator) {
       this.dataChannel = this.pc!.createDataChannel("data", {
         ordered: true, // Ensure ordered delivery
         maxRetransmits: undefined, // Reliable delivery
@@ -82,41 +86,54 @@ export class PeerChannelImpl {
     } else {
       // no nothing?
       // need to resend the offer somehow, as these values can expire
+      // this will be useful for polite sending
     }
   }
 
-  // sends data to the peer. If false it returned, it means that the sender
-  // must retry sending. Ideally they should wait for the backpressure to go away
-  send(data: Uint8Array, opts: { useBackpressure: boolean }): boolean {
+  _send(data: PeerMessage) {
     if (!this.dataChannel || this.dataChannel.readyState !== "open") {
-      const decoded = peerMessageFromBytes(data);
-      console.log("WHAT WAS ATTEMPTED TO SEND", decoded);
+      console.error("WHAT WAS ATTEMPTED TO SEND", data);
       throw new Error("Cannot send: data channel is not open");
     }
-    if (
-      opts?.useBackpressure &&
-      this.dataChannel.bufferedAmount >
-        this.dataChannel.bufferedAmountLowThreshold
-    ) {
-      console.log("Cannot send: data channel is full, try again later");
-      return false;
-    }
+    // if (
+    //   this.dataChannel.bufferedAmount >
+    //   this.dataChannel.bufferedAmountLowThreshold
+    // ) {
+    //   this._hasBackpressure = true;
+    // }
 
-    const arrayBuffer = data.buffer;
+    const encoded = TransferProtocol.encode(data);
+
+    const arrayBuffer = encoded.buffer;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.dataChannel.send(arrayBuffer as any);
 
-    return true;
+    this.resetMyPing();
   }
 
-  get canSend(): boolean {
+  get _hasBackpressure() {
+    if (!this.dataChannel) {
+      throw new Error("Cannot check backpressure: data channel is not open");
+    }
+    const hasBackpressure =
+      this.dataChannel.bufferedAmount >
+      this.dataChannel.bufferedAmountLowThreshold;
+
+    if (hasBackpressure) {
+      console.warn("Backpressure encountered");
+    }
+
+    return hasBackpressure;
+  }
+
+  _canSend(): boolean {
     const isDatachannelOpen =
       this.dataChannel !== null && this.dataChannel.readyState === "open";
 
     return isDatachannelOpen;
   }
 
-  close() {
+  private close() {
     if (this.pc) {
       this.pc.close(); // this closes the data channel too?!
       this.dataChannel = null;
@@ -134,17 +151,24 @@ export class PeerChannelImpl {
     }
   }
 
-  recievedPing() {
+  private resetMyPing() {
+    if (this.myPingInterval) {
+      clearInterval(this.myPingInterval);
+    }
+    this.myPingInterval = setInterval(() => {
+      if (this._canSend()) {
+        this._send({ type: "ping" });
+      }
+    }, PING_INTERVAL);
+  }
+
+  private recievedMessage() {
     if (this.peerPingTimeout) {
       clearTimeout(this.peerPingTimeout);
     }
     this.peerPingTimeout = setTimeout(() => {
       console.error("PING TIMED OUT, will implement reconnecting (TODO)");
     }, PING_TIMEOUT);
-  }
-
-  getStats(): Promise<RTCStatsReport | null> {
-    return this.pc?.getStats() ?? Promise.resolve(null);
   }
 
   private get signalingApiMust() {
@@ -171,7 +195,7 @@ export class PeerChannelImpl {
     });
     this.setupPeerConnection();
     this.signalingApi = new SignalingApi(
-      this.roomParams,
+      this.options.roomParams,
       (p2pSignalingPayload) => {
         this.handleSignalingMessage(p2pSignalingPayload);
       },
@@ -201,39 +225,36 @@ export class PeerChannelImpl {
     };
 
     this.pc.onconnectionstatechange = () => {
-      console.log("Connection state:", this.pc!.connectionState);
+      console.log("Connection status:", this.pc!.connectionState);
 
-      let newState: PeerConnectionStatus = "disconnected";
+      let newStatus: PeerConnectionStatus = "disconnected";
 
       switch (this.pc!.connectionState) {
         case "connected":
-          // newState = "connected";
           this.destroySignalingApi();
-
-          newState = "connecting"; // still need to wait for the data channel to open
+          newStatus = "connecting"; // still need to wait for the data channel to open
           break;
         case "disconnected":
-          newState = "disconnected";
+          newStatus = "disconnected";
           break;
         case "failed":
-          newState = "failed";
-          // this is ICE type of failure... dont use it for reconnects
+          newStatus = "failed";
+          // this could be ICE type of failure... dont use it for reconnects
           this.connect();
           break;
         case "closed":
-          newState = "disconnected";
+          newStatus = "disconnected";
           // what to do with signaling api here?
           break;
         case "connecting":
-          newState = "connecting";
-          // what to do with signaling api here?
+          newStatus = "connecting";
           break;
         case "new":
           console.warn("Ignoring new connection state");
           break;
       }
 
-      this.callbacks.onConnectionStateChange(newState);
+      this.setConnectionStatus(newStatus);
     };
 
     this.pc.oniceconnectionstatechange = () => {
@@ -246,35 +267,34 @@ export class PeerChannelImpl {
       throw new Error("Data channel not initialized");
     }
     this.dataChannel.binaryType = "arraybuffer";
-    this.dataChannel.bufferedAmountLowThreshold = 1 << 15; // 32 KiB as example threshold
+    this.dataChannel.bufferedAmountLowThreshold = BACKPRESSURE_THRESHOLD; // 32 KiB as example threshold
 
     this.dataChannel.onopen = () => {
       console.log("Data channel opened");
       this.callbacks.onConnectionStateChange("connected");
 
-      this.myPingInterval = setInterval(() => {
-        if (this.canSend) {
-          this.callbacks.sendPing();
-        }
-      }, PING_INTERVAL);
+      this.resetMyPing();
       // send ping right away
-      this.callbacks.sendPing();
+      this._send({ type: "ping" });
     };
 
     this.dataChannel.onmessage = (event) => {
       // convert to Uint8Array
       const uint8Array = new Uint8Array(event.data);
-      this.callbacks.onMessageReceived(uint8Array);
+
+      this.recievedMessage();
+      const decoded = TransferProtocol.decode(uint8Array);
+      this._messageSubscribers.notifyListeners(decoded);
     };
 
     this.dataChannel.onbufferedamountlow = () => {
       console.log("Buffered amount low, it was drained, resume sending");
-      this.callbacks.onDataDrained();
+      this._drainSubscribers.notifyListeners();
     };
 
     this.dataChannel.onerror = (event) => {
-      // channel may not been closed
-      console.error("Data channel error event:", event);
+      // TODO: handle
+      console.error("WEBRTC Data channel error event!!! :", event);
 
       this.callbacks.onError(event.error.message);
     };
@@ -299,7 +319,7 @@ export class PeerChannelImpl {
           break;
       }
     } catch (error) {
-      console.error("Error handling signaling message:", error);
+      console.error("WEBRTC Error handling signaling message!!! :", error);
     }
   }
 
@@ -331,5 +351,25 @@ export class PeerChannelImpl {
     } catch (error) {
       console.error("Error adding ICE candidate:", error);
     }
+  }
+}
+
+export class WebRTCPeerChannel implements PeerChannel {
+  constructor(private manager: WebRTCPeerChannelManager) {}
+
+  isReady(): boolean {
+    return this.manager._canSend();
+  }
+  hasBackpressure(): boolean {
+    return this.manager._hasBackpressure;
+  }
+  send(message: PeerMessage): void {
+    this.manager._send(message);
+  }
+  listenOnDrained(cb: () => void): void {
+    this.manager._drainSubscribers.subscribe(cb);
+  }
+  listenOnData(cb: (message: PeerMessage) => void): void {
+    this.manager._messageSubscribers.subscribe(cb);
   }
 }

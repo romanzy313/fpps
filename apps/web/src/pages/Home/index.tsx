@@ -28,6 +28,8 @@ export function Home() {
 
   return (
     <div className="home">
+      {/*<script src="/steamsaver/StreamSaver.js"></script>
+      <script src="/streamsaver/sw.js"></script>*/}
       <h1>Home Page</h1>
       <button
         onClick={async () => {

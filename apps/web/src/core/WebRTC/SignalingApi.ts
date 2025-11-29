@@ -4,8 +4,8 @@ import {
   serializeApiSignalingMessageRequest,
   serializeApiSignalingPollRequest,
 } from "@fpps/common";
-import { config } from "../config";
-import { RoomParams } from "../utils/roomParams";
+import { config } from "../../config";
+import { RoomParams } from "../../utils/roomParams";
 
 const POLL_INTERVAL_MS = 3000; // Poll every second
 const NON_INITIATOR_WAIT_MS = 5000; // Wait 5 seconds before first poll if not initiator
@@ -13,7 +13,6 @@ const NON_INITIATOR_WAIT_MS = 5000; // Wait 5 seconds before first poll if not i
 export class SignalingApi {
   private isOn = false;
   private pollTimeout: NodeJS.Timeout | null = null;
-  private pollIntervalMs = 3000; // Poll every second
   private sendQueue: P2PSignalingPayload[] = [];
   private isFetching = false;
   private fetchQueue: (() => Promise<void>)[] = [];

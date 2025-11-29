@@ -1,8 +1,9 @@
-import { PeerMessage, TransferStats } from "./PeerChannel";
+import { ValueSubscriber } from "../utils/ValueSubscriber";
+import { PeerMessage, TransferStats, TransferStatus } from "./PeerChannel";
 import { PeerChannel } from "./PeerChannel";
 
 export class Downloader {
-  private status: "idle" | "transfer" | "done" | "aborted" = "idle";
+  status = new ValueSubscriber<TransferStatus>("idle");
   private stats: TransferStats | null = null;
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 
@@ -11,11 +12,11 @@ export class Downloader {
   }
 
   start(writableStream: WritableStream<Uint8Array>) {
-    if (this.status === "done") {
-      this.status = "idle";
+    if (this.status.value === "done") {
+      this.status.setValue("idle");
     }
 
-    if (this.status === "transfer") {
+    if (this.status.value === "transfer") {
       throw new Error(
         "Cannot start a transfer while it's already in progress (bad status)",
       );
@@ -32,7 +33,7 @@ export class Downloader {
   }
 
   private isAborted() {
-    return this.status === "aborted";
+    return this.status.value === "aborted";
   }
 
   async abort() {
@@ -41,13 +42,13 @@ export class Downloader {
   }
 
   private async internalAbort() {
-    if (this.status !== "transfer") {
+    if (this.status.value !== "transfer") {
       throw new Error(
         `Cannot abort a non-downloading transfer (bad status: ${this.status})`,
       );
     }
 
-    this.status = "aborted";
+    this.status.setValue("aborted");
     if (!this.writer) {
       throw new Error("Cannot abort a non-downloading transfer (no writer)");
     }
@@ -56,16 +57,12 @@ export class Downloader {
   }
 
   private async done() {
-    this.status = "done";
+    this.status.setValue("done");
     if (!this.writer) {
       throw new Error("Cannot complete a transfer without a writer");
     }
     await this.writer.close();
     this.writer = null;
-  }
-
-  getStatus() {
-    return this.status;
   }
 
   getStats() {
@@ -75,13 +72,13 @@ export class Downloader {
   private onData(message: PeerMessage) {
     switch (message.type) {
       case "transfer-started":
-        this.status = "transfer";
+        this.status.setValue("transfer");
         break;
       case "transfer-chunk":
         if (this.isAborted()) {
           return;
         }
-        if (this.status !== "transfer") {
+        if (this.status.value !== "transfer") {
           throw new Error("Cannot receive a chunk while not downloading");
         }
         if (!this.writer) {
@@ -93,9 +90,13 @@ export class Downloader {
         this.done();
         break;
       case "transfer-stats":
+        // console.log("GOT STATS", {
+        //   value: message.value,
+        // });
         this.stats = message.value;
         break;
       case "transfer-start":
+      case "preview-stats":
       case "ping":
         // no-op
         break;
@@ -107,5 +108,9 @@ export class Downloader {
     }
 
     // Handle data
+  }
+
+  dispose() {
+    this.status.dispose();
   }
 }

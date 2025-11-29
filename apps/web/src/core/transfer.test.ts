@@ -86,13 +86,13 @@ describe("Uploader", () => {
     const file = new File(["42"], "test.txt");
     uploader.setFiles([file]);
 
-    expect(uploader.getStatus()).toBe("idle");
-    expect(downloader.getStatus()).toBe("idle");
+    expect(uploader.status.value).toBe("idle");
+    expect(downloader.status.value).toBe("idle");
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "done");
-    await vi.waitUntil(() => downloader.getStatus() === "done");
+    await vi.waitUntil(() => uploader.status.value === "done");
+    await vi.waitUntil(() => downloader.status.value === "done");
 
     await vi.waitUntil(() => writableClosed);
 
@@ -108,13 +108,13 @@ describe("Uploader", () => {
 
     uploader.setFiles([file]);
 
-    expect(uploader.getStatus()).toBe("idle");
-    expect(downloader.getStatus()).toBe("idle");
+    expect(uploader.status.value).toBe("idle");
+    expect(downloader.status.value).toBe("idle");
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "done");
-    await vi.waitUntil(() => downloader.getStatus() === "done");
+    await vi.waitUntil(() => uploader.status.value === "done");
+    await vi.waitUntil(() => downloader.status.value === "done");
 
     await vi.waitUntil(() => writableClosed);
 
@@ -131,13 +131,13 @@ describe("Uploader", () => {
 
     uploader.setFiles([file1, file2]);
 
-    expect(downloader.getStatus()).toBe("idle");
-    expect(uploader.getStatus()).toBe("idle");
+    expect(downloader.status.value).toBe("idle");
+    expect(uploader.status.value).toBe("idle");
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "done");
-    await vi.waitUntil(() => downloader.getStatus() === "done");
+    await vi.waitUntil(() => uploader.status.value === "done");
+    await vi.waitUntil(() => downloader.status.value === "done");
 
     await vi.waitUntil(() => writableClosed);
 
@@ -152,39 +152,65 @@ describe("Uploader", () => {
     );
   });
 
-  it("should upload many large chunked file", async () => {
-    const file3 = generateTestFile(20, "test-large"); // 20 kb
+  it("should upload empty files", async () => {
+    const file = new File([""], "empty.txt");
+    uploader.setFiles([file, file, file]);
 
-    uploader.setFiles([file3, file3]);
-
-    expect(uploader.getStatus()).toBe("idle");
-    expect(downloader.getStatus()).toBe("idle");
+    expect(uploader.status.value).toBe("idle");
+    expect(downloader.status.value).toBe("idle");
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "done");
-    await vi.waitUntil(() => downloader.getStatus() === "done");
+    await vi.waitUntil(() => uploader.status.value === "done");
+    await vi.waitUntil(() => downloader.status.value === "done");
 
     await vi.waitUntil(() => writableClosed);
 
-    expect(files.length).toBe(2);
-    expect(files[0]!.name).toBe("test-large");
-    expect(files[0]!.data.length).toEqual(20 * 1024);
-    expect(files[0]!.data).toEqual(await file3.bytes());
+    expect(files.length).toBe(3);
+    expect(files[0]!.name).toBe("empty.txt");
+    expect(files[0]!.data).toEqual(
+      new Uint8Array(new TextEncoder().encode("")),
+    );
   });
+
+  it(
+    "should upload many large chunked files",
+    { timeout: 10_000 },
+    async () => {
+      const file3 = generateTestFile(500, "test-large"); // 0.5Mb
+
+      uploader.setFiles([file3, file3]);
+
+      expect(uploader.status.value).toBe("idle");
+      expect(downloader.status.value).toBe("idle");
+
+      downloader.start(writableStream);
+
+      await vi.waitUntil(() => uploader.status.value === "done", {
+        timeout: 10_000,
+      });
+      await vi.waitUntil(() => downloader.status.value === "done");
+
+      await vi.waitUntil(() => writableClosed);
+
+      expect(files.length).toBe(2);
+      expect(files[0]!.name).toBe("test-large");
+      expect(files[0]!.data).toEqual(await file3.bytes());
+    },
+  );
 
   it("should start a second transfer", async () => {
     const file1 = new File(["first"], "first.txt");
 
     uploader.setFiles([file1]);
 
-    expect(uploader.getStatus()).toBe("idle");
-    expect(downloader.getStatus()).toBe("idle");
+    expect(uploader.status.value).toBe("idle");
+    expect(downloader.status.value).toBe("idle");
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "done");
-    await vi.waitUntil(() => downloader.getStatus() === "done");
+    await vi.waitUntil(() => uploader.status.value === "done");
+    await vi.waitUntil(() => downloader.status.value === "done");
     await vi.waitUntil(() => writableClosed);
 
     expect(files.length).toBe(1);
@@ -200,8 +226,8 @@ describe("Uploader", () => {
     newWritableStream();
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "done");
-    await vi.waitUntil(() => downloader.getStatus() === "done");
+    await vi.waitUntil(() => uploader.status.value === "done");
+    await vi.waitUntil(() => downloader.status.value === "done");
 
     expect(files.length).toBe(1);
     expect(files[0]!.name).toBe("second.txt");
@@ -212,19 +238,19 @@ describe("Uploader", () => {
 
     uploader.setFiles([fileLarge]);
 
-    expect(uploader.getStatus()).toBe("idle");
-    expect(downloader.getStatus()).toBe("idle");
+    expect(uploader.status.value).toBe("idle");
+    expect(downloader.status.value).toBe("idle");
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "transfer", {
+    await vi.waitUntil(() => uploader.status.value === "transfer", {
       timeout: 1000,
       interval: 1,
     });
     uploader.abort();
 
-    await vi.waitUntil(() => uploader.getStatus() === "aborted");
-    await vi.waitUntil(() => downloader.getStatus() === "aborted");
+    await vi.waitUntil(() => uploader.status.value === "aborted");
+    await vi.waitUntil(() => downloader.status.value === "aborted");
 
     await vi.waitUntil(() => writableClosed);
 
@@ -235,8 +261,8 @@ describe("Uploader", () => {
     newWritableStream();
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "done");
-    await vi.waitUntil(() => downloader.getStatus() === "done");
+    await vi.waitUntil(() => uploader.status.value === "done");
+    await vi.waitUntil(() => downloader.status.value === "done");
 
     expect(files.length).toBe(1);
     expect(files[0]!.name).toBe("restart.txt");
@@ -247,19 +273,19 @@ describe("Uploader", () => {
 
     uploader.setFiles([fileLarge]);
 
-    expect(uploader.getStatus()).toBe("idle");
-    expect(downloader.getStatus()).toBe("idle");
+    expect(uploader.status.value).toBe("idle");
+    expect(downloader.status.value).toBe("idle");
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => downloader.getStatus() === "transfer", {
+    await vi.waitUntil(() => downloader.status.value === "transfer", {
       timeout: 1000,
       interval: 1,
     });
     downloader.abort();
 
-    await vi.waitUntil(() => uploader.getStatus() === "aborted");
-    await vi.waitUntil(() => downloader.getStatus() === "aborted");
+    await vi.waitUntil(() => uploader.status.value === "aborted");
+    await vi.waitUntil(() => downloader.status.value === "aborted");
 
     await vi.waitUntil(() => writableClosed);
 
@@ -270,8 +296,8 @@ describe("Uploader", () => {
     newWritableStream();
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "done");
-    await vi.waitUntil(() => downloader.getStatus() === "done");
+    await vi.waitUntil(() => uploader.status.value === "done");
+    await vi.waitUntil(() => downloader.status.value === "done");
 
     expect(files.length).toBe(1);
     expect(files[0]!.name).toBe("restart.txt");

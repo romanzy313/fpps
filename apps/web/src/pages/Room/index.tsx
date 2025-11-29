@@ -12,12 +12,18 @@ export function Room() {
     myFiles,
     peerFiles,
     shareCode,
-    addMyFiles,
+    addMoreFiles,
     startDownload,
+    abortDownload,
+    abortUpload,
+    downloadStatus,
+    downloadStats,
+    uploadStatus,
+    uploadStats,
     roomParams,
   } = useRoom();
 
-  const isPeerOffline = connectionState === "offline";
+  const isPeerOffline = connectionState === "disconnected";
 
   return (
     <div>
@@ -45,12 +51,19 @@ export function Room() {
       )}
       <div>
         <div className={"my-files"}>
-          <MyFiles fileItems={myFiles} addMyFiles={addMyFiles}></MyFiles>
+          <MyFiles
+            peerFiles={myFiles}
+            uploadStatus={uploadStatus}
+            addMyFiles={addMoreFiles}
+            transferStats={uploadStats}
+          ></MyFiles>
         </div>
         <div className={"peer-files"}>
           <PeerFiles
-            fileItems={peerFiles}
+            peerFiles={peerFiles}
+            downloadStatus={downloadStatus}
             startDownload={startDownload}
+            transferStats={downloadStats}
           ></PeerFiles>
         </div>
       </div>

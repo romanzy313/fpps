@@ -1,36 +1,50 @@
-import { useMemo } from "preact/hooks";
-import { FileItem } from "../peer/Core";
 import { JsonDebug } from "./JsonDebug";
+import { FullFilesState } from "../core/Core";
+import { TransferStats, TransferStatus } from "../core/PeerChannel";
+import { formatFileSize } from "../utils/formatSize";
 
 type Props = {
-  fileItems: FileItem[];
+  peerFiles: FullFilesState;
+  uploadStatus: TransferStatus;
+  transferStats: TransferStats | null;
   addMyFiles: (files: File[]) => void;
 };
 
-export function MyFiles({ fileItems, addMyFiles }: Props) {
-  const fileCount = useMemo(() => fileItems.length, [fileItems]);
-  const fileSize = useMemo(
-    () => fileItems.reduce((acc, item) => acc + item.sizeBytes, 0),
-    [fileItems],
-  );
+export function MyFiles({
+  peerFiles,
+  uploadStatus,
+  transferStats,
+  addMyFiles,
+}: Props) {
+  const fileCount = peerFiles.totalCount;
+  const fileSize = peerFiles.totalBytes;
+
+  const canUploadFiles = uploadStatus !== "transfer";
 
   function onFilesSelect(fileList: FileList) {
+    if (!canUploadFiles) {
+      return;
+    }
+
     const files: File[] = [];
 
     for (const file of fileList) {
       files.push(file);
     }
+
     addMyFiles(files);
   }
+
+  const isUploading = transferStats !== null;
 
   return (
     <>
       <h2>
-        My Files ({fileCount} files, {fileSize} bytes)
+        My Files ({fileCount} files, {formatFileSize(fileSize)})
       </h2>
       <div className="bg-grey" style={{ height: "20rem", overflowY: "auto" }}>
         <div>File browser does here</div>
-        <JsonDebug data={fileItems} />
+        <JsonDebug data={peerFiles} />
       </div>
       <div
         style={{
@@ -45,6 +59,7 @@ export function MyFiles({ fileItems, addMyFiles }: Props) {
           <div>Upload folder</div>
           <input
             type="file"
+            disabled={!canUploadFiles}
             multiple
             {...({
               webkitdirectory: true,
@@ -59,10 +74,26 @@ export function MyFiles({ fileItems, addMyFiles }: Props) {
           <div>Upload files</div>
           <input
             type="file"
+            disabled={!canUploadFiles}
             multiple
             onChange={(e) => onFilesSelect(e.currentTarget.files!)}
           />
         </div>
+      </div>
+      <div>
+        <h3>Upload state: {uploadStatus}</h3>
+        {transferStats && (
+          <div>
+            <div>
+              <span>{transferStats.currentIndex}</span> out of{" "}
+              <span>{transferStats.totalFiles}</span> files
+            </div>
+            <div>
+              <span>{formatFileSize(transferStats.transferredBytes)}</span> out
+              of <span>{formatFileSize(transferStats.totalBytes)}</span>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -2,7 +2,7 @@ export interface PeerChannelSender {
   isReady(): boolean;
   hasBackpressure(): boolean;
   send(message: PeerMessage): void;
-  listenOnDrained(cb: () => void): void;
+  listenOnDrained(cb: () => void): void; // TODO: return unsub function
 }
 
 export interface PeerChannelReciever {
@@ -10,6 +10,8 @@ export interface PeerChannelReciever {
 }
 
 export interface PeerChannel extends PeerChannelSender, PeerChannelReciever {}
+
+export type TransferStatus = "idle" | "transfer" | "done" | "aborted";
 
 export type TransferStats = {
   currentIndex: number;
@@ -19,6 +21,11 @@ export type TransferStats = {
   // speed can be here
 };
 
+export type PreviewFileStats = {
+  totalCount: number;
+  totalBytes: number;
+};
+
 export type PeerMessage =
   | { type: "ping" }
   | { type: "transfer-started" }
@@ -26,13 +33,18 @@ export type PeerMessage =
   | { type: "transfer-chunk"; value: Uint8Array }
   | { type: "transfer-stats"; value: TransferStats }
   | { type: "transfer-abort" }
-  | { type: "transfer-done" };
+  | { type: "transfer-done" }
+  | { type: "preview-stats"; value: PreviewFileStats };
 
 export class TransferProtocol {
   static encode(message: PeerMessage): Uint8Array {
+    function stringify(value: any) {
+      return new TextEncoder().encode(JSON.stringify(value));
+    }
+
     switch (message.type) {
       case "ping":
-        return new TextEncoder().encode("p0");
+        return new TextEncoder().encode("00");
       case "transfer-start":
         return new TextEncoder().encode("t0");
       case "transfer-started":
@@ -45,19 +57,22 @@ export class TransferProtocol {
       case "transfer-stats":
         return new Uint8Array([
           ...new TextEncoder().encode("t3"),
-          ...new TextEncoder().encode(
-            JSON.stringify([
-              message.value.currentIndex,
-              message.value.totalFiles,
-              message.value.transferredBytes,
-              message.value.totalBytes,
-            ]),
-          ),
+          ...stringify([
+            message.value.currentIndex,
+            message.value.totalFiles,
+            message.value.transferredBytes,
+            message.value.totalBytes,
+          ]),
         ]);
       case "transfer-abort":
         return new TextEncoder().encode("t4");
       case "transfer-done":
         return new TextEncoder().encode("t5");
+      case "preview-stats":
+        return new Uint8Array([
+          ...new TextEncoder().encode("p1"),
+          ...stringify([message.value.totalCount, message.value.totalBytes]),
+        ]);
     }
   }
   static decode(data: Uint8Array): PeerMessage {
@@ -75,7 +90,7 @@ export class TransferProtocol {
     }
 
     switch (type) {
-      case "p0":
+      case "00":
         return { type: "ping" };
       case "t0":
         return { type: "transfer-start" };
@@ -94,8 +109,15 @@ export class TransferProtocol {
         return { type: "transfer-abort" };
       case "t5":
         return { type: "transfer-done" };
+      case "p1": {
+        const [totalFiles, totalBytes] = json();
+        return {
+          type: "preview-stats",
+          value: { totalCount: totalFiles, totalBytes },
+        };
+      }
       default:
-        throw new Error("invalid payload type" + type);
+        throw new Error(`Unknown message type: ${type}`);
     }
   }
 }
