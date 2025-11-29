@@ -2,7 +2,7 @@ import { PeerMessage, TransferStats } from "./PeerChannel";
 import { PeerChannel } from "./PeerChannel";
 
 export class Downloader {
-  private status: "idle" | "downloading" | "done" | "aborted" = "idle";
+  private status: "idle" | "transfer" | "done" | "aborted" = "idle";
   private stats: TransferStats | null = null;
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 
@@ -15,7 +15,7 @@ export class Downloader {
       this.status = "idle";
     }
 
-    if (this.status === "downloading") {
+    if (this.status === "transfer") {
       throw new Error(
         "Cannot start a transfer while it's already in progress (bad status)",
       );
@@ -41,7 +41,7 @@ export class Downloader {
   }
 
   private async internalAbort() {
-    if (this.status !== "downloading") {
+    if (this.status !== "transfer") {
       throw new Error(
         `Cannot abort a non-downloading transfer (bad status: ${this.status})`,
       );
@@ -75,13 +75,13 @@ export class Downloader {
   private onData(message: PeerMessage) {
     switch (message.type) {
       case "transfer-started":
-        this.status = "downloading";
+        this.status = "transfer";
         break;
       case "transfer-chunk":
         if (this.isAborted()) {
           return;
         }
-        if (this.status !== "downloading") {
+        if (this.status !== "transfer") {
           throw new Error("Cannot receive a chunk while not downloading");
         }
         if (!this.writer) {

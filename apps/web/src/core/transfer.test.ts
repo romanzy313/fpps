@@ -208,16 +208,16 @@ describe("Uploader", () => {
   });
 
   it("should abort transfer via uploader", async () => {
-    const file3 = generateTestFile(10_000, "test-large"); // 20 kb
+    const fileLarge = generateTestFile(10_000, "test-large"); // 10Mb
 
-    uploader.setFiles([file3]);
+    uploader.setFiles([fileLarge]);
 
     expect(uploader.getStatus()).toBe("idle");
     expect(downloader.getStatus()).toBe("idle");
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.getStatus() === "uploading", {
+    await vi.waitUntil(() => uploader.getStatus() === "transfer", {
       timeout: 1000,
       interval: 1,
     });
@@ -243,16 +243,16 @@ describe("Uploader", () => {
   });
 
   it("should abort transfer via downloader", async () => {
-    const file3 = generateTestFile(10_000, "test-large"); // 20 kb
+    const fileLarge = generateTestFile(10_000, "test-large"); // 10Mb
 
-    uploader.setFiles([file3]);
+    uploader.setFiles([fileLarge]);
 
     expect(uploader.getStatus()).toBe("idle");
     expect(downloader.getStatus()).toBe("idle");
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => downloader.getStatus() === "downloading", {
+    await vi.waitUntil(() => downloader.getStatus() === "transfer", {
       timeout: 1000,
       interval: 1,
     });

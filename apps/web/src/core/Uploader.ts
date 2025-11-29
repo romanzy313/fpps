@@ -9,7 +9,7 @@ export class Uploader {
   private PROGRESS_EVERY_BYTES = this.READ_CHUNK_SIZE * 10;
 
   private files: File[] = [];
-  private status: "idle" | "uploading" | "done" | "aborted" = "idle";
+  private status: "idle" | "transfer" | "done" | "aborted" = "idle";
   private zip: Zip | null = null;
   private underBackpressure = false;
   private currentFileIndex = 0;
@@ -49,7 +49,7 @@ export class Uploader {
   }
 
   setFiles(files: File[]) {
-    if (this.status === "uploading") {
+    if (this.status === "transfer") {
       throw new Error("Cannot set files while uploading");
     }
     this.files = files;
@@ -77,10 +77,10 @@ export class Uploader {
       throw new Error("Peer channel is not ready to upload");
     }
 
-    if (this.status === "uploading") {
+    if (this.status === "transfer") {
       throw new Error("Cannot start transfer: uploader is already uploading");
     }
-    this.status = "uploading";
+    this.status = "transfer";
 
     this.zip = new Zip((err, data, done) => {
       if (err) {
@@ -245,7 +245,7 @@ export class Uploader {
   }
 
   private internalAbort() {
-    if (this.status !== "uploading") {
+    if (this.status !== "transfer") {
       throw new Error(
         "Cannot abort transfer: uploader is not in uploading state",
       );
