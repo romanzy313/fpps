@@ -4,7 +4,11 @@ import { stringifyRoomParams } from "../utils/roomParams";
 import { useRoomParams2 } from "./useRoomParams";
 import { Core, emptyPeerFiles, FileItem, FullFilesState } from "../core/Core";
 import { PeerConnectionStatus } from "../core/WebRTC/WebRTCPeerChannelManager";
-import { TransferStats, TransferStatus } from "../core/PeerChannel";
+import {
+  TransferStats,
+  TransferStatus,
+  zeroTransferStats,
+} from "../core/PeerChannel";
 
 const STATS_UPDATE_INTERVAL_MS = 500;
 
@@ -22,10 +26,10 @@ export function useRoom() {
   const [uploadStatus, setUploadStatus] = useState<TransferStatus>("idle");
   const [downloadStatus, setDownloadStatus] = useState<TransferStatus>("idle");
 
-  const [uploadStats, setUploadStats] = useState<TransferStats | null>(null);
-  const [downloadStats, setDownloadStats] = useState<TransferStats | null>(
-    null,
-  );
+  const [uploadStats, setUploadStats] =
+    useState<TransferStats>(zeroTransferStats());
+  const [downloadStats, setDownloadStats] =
+    useState<TransferStats>(zeroTransferStats());
 
   useEffect(() => {
     const newCore = new Core(roomParams);

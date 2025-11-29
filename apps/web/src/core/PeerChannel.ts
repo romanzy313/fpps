@@ -21,6 +21,15 @@ export type TransferStats = {
   // speed can be here
 };
 
+export function zeroTransferStats(): TransferStats {
+  return {
+    currentIndex: 0,
+    totalFiles: 0,
+    transferredBytes: 0,
+    totalBytes: 0,
+  };
+}
+
 export type PreviewFileStats = {
   totalCount: number;
   totalBytes: number;

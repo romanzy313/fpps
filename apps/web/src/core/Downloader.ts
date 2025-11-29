@@ -1,10 +1,15 @@
 import { ValueSubscriber } from "../utils/ValueSubscriber";
-import { PeerMessage, TransferStats, TransferStatus } from "./PeerChannel";
+import {
+  PeerMessage,
+  TransferStats,
+  TransferStatus,
+  zeroTransferStats,
+} from "./PeerChannel";
 import { PeerChannel } from "./PeerChannel";
 
 export class Downloader {
   status = new ValueSubscriber<TransferStatus>("idle");
-  private stats: TransferStats | null = null;
+  private stats: TransferStats = zeroTransferStats();
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 
   constructor(private peerChannel: PeerChannel) {
@@ -27,7 +32,7 @@ export class Downloader {
       );
     }
 
-    this.stats = null;
+    this.stats = zeroTransferStats();
     this.writer = writableStream.getWriter();
     this.peerChannel.send({ type: "transfer-start" });
   }

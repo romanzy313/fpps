@@ -17,7 +17,6 @@ export class Uploader {
   private files: File[] = [];
   status = new ValueSubscriber<TransferStatus>("idle");
   private zip: Zip | null = null;
-  private underBackpressure = false;
   private currentFileIndex = 0;
   private totalProcessedBytes = 0;
   private lastStatSentBytes = 0;
@@ -32,6 +31,8 @@ export class Uploader {
     peerChannel.listenOnData(this.onData.bind(this));
   }
 
+  // TODO: for some reason this does not count duplicate file bytes
+  // Its nice, but why?
   get totalSizeBytes(): number {
     // TODO: pls cache
     return this.files.reduce((acc, file) => acc + file.size, 0);
@@ -71,9 +72,9 @@ export class Uploader {
   }
 
   private done() {
-    console.log("DONE SENDING STATS", {
-      value: this.getStats(),
-    });
+    // console.log("DONE SENDING STATS", {
+    //   value: this.getStats(),
+    // });
     this.peerChannel.send({ type: "transfer-stats", value: this.getStats() });
     this.peerChannel.send({ type: "transfer-done" });
     this.status.setValue("done");
@@ -92,18 +93,23 @@ export class Uploader {
 
     this.zip = new Zip((err, data, done) => {
       if (err) {
-        // TODO: bubble error to the class variable
+        // when connection error is enountered, it thows here:
+        // Error: Zip error: Cannot send: data channel is not open
+        // TODO: move this error type to the status of the class
+        // separate error value?
         throw new Error(`Zip error: ${err.message}`);
       }
 
-      console.log(
-        "ZIP CHUNK OF SIZE",
-        data.byteLength,
-        "SENT",
-        "IS DONE?",
-        done,
-      );
-      // backpressure is not managed here
+      // TODO: some chunks are really small. need to accumulate internally
+      // if the zip contains lots of small files, each one is a "chunk here"
+      // console.log(
+      //   "ZIP CHUNK OF SIZE",
+      //   data.byteLength,
+      //   "SENT",
+      //   "IS DONE?",
+      //   done,
+      // );
+      // backpressure is managed on reading side
       this.peerChannel.send({ type: "transfer-chunk", value: data });
 
       if (done) {
@@ -124,12 +130,6 @@ export class Uploader {
     this.process();
   }
 
-  // how things are communicated:
-  // 1) send totalCount + totalSize
-  //  --- 2) send many chunks
-  //  --- 3) send progress every x Chunks
-  // 4) send done
-
   // returns true if next files exists
   // true value means processing must continue
   private advance(): boolean {
@@ -146,32 +146,20 @@ export class Uploader {
       if (this.files.length === 0) {
         throw new Error("No files to initially advance");
       }
-      const file = this.files[0]!;
-      const deflate = new ZipDeflate(file.webkitRelativePath || file.name, {
-        level: 6,
-      });
-      this.zip.add(deflate);
-
-      this.current = {
-        file,
-        deflate,
-        progress: 0,
-      };
       this.currentFileIndex = 0;
-      return true;
+      this.totalProcessedBytes = 0;
+    } else {
+      this.currentFileIndex++;
     }
 
-    this.currentFileIndex++;
-
-    const file = this.files[this.currentFileIndex];
-    if (!file || this.currentFileIndex >= this.files.length) {
+    if (this.currentFileIndex >= this.files.length) {
       // reached the end
-      console.log("ENDING ZIP");
       this.current = null;
       this.zip.end();
 
       return false;
     }
+    const file = this.files[this.currentFileIndex]!;
 
     const deflate = new ZipDeflate(file.webkitRelativePath || file.name, {
       level: 6,
@@ -192,17 +180,14 @@ export class Uploader {
       return;
     }
 
-    if (this.underBackpressure) {
-      throw new Error("Cannot process under backpressure");
-    }
-
     if (!this.peerChannel.isReady()) {
       throw new Error("Connection problem, do something about it");
     }
 
-    // check for backpressure and let
+    // TODO: actually check this
     if (this.peerChannel.hasBackpressure()) {
-      this.underBackpressure = true;
+      console.warn("Tried to process under backpressure, retrying later");
+      // throw new Error("Cannot process under backpressure");
       return;
     }
 
@@ -303,12 +288,7 @@ export class Uploader {
   }
 
   private onDrained() {
-    if (this.underBackpressure) {
-      this.underBackpressure = false;
-      this.process();
-    } else {
-      console.warn("DRAINED BUT WAS NOT UNDER BACKPRESSURE");
-    }
+    this.process();
   }
 
   dispose() {

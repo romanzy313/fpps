@@ -6,7 +6,7 @@ import { formatFileSize } from "../utils/formatSize";
 type Props = {
   peerFiles: FullFilesState;
   uploadStatus: TransferStatus;
-  transferStats: TransferStats | null;
+  transferStats: TransferStats;
   addMyFiles: (files: File[]) => void;
 };
 
@@ -34,8 +34,6 @@ export function MyFiles({
 
     addMyFiles(files);
   }
-
-  const isUploading = transferStats !== null;
 
   return (
     <>
@@ -82,18 +80,16 @@ export function MyFiles({
       </div>
       <div>
         <h3>Upload state: {uploadStatus}</h3>
-        {transferStats && (
+        <div>
           <div>
-            <div>
-              <span>{transferStats.currentIndex}</span> out of{" "}
-              <span>{transferStats.totalFiles}</span> files
-            </div>
-            <div>
-              <span>{formatFileSize(transferStats.transferredBytes)}</span> out
-              of <span>{formatFileSize(transferStats.totalBytes)}</span>
-            </div>
+            <span>{transferStats.currentIndex}</span> out of{" "}
+            <span>{transferStats.totalFiles}</span> files
           </div>
-        )}
+          <div>
+            <span>{formatFileSize(transferStats.transferredBytes)}</span> out of{" "}
+            <span>{formatFileSize(transferStats.totalBytes)}</span>
+          </div>
+        </div>
       </div>
     </>
   );

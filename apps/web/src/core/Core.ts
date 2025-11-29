@@ -137,7 +137,7 @@ export class Core {
     this.myFiles.totalCount += parsedFiles.length;
     this.myFiles.totalBytes += parsedFiles.reduce(
       (acc, file) => acc + file.sizeBytes,
-      this.myFiles.totalCount,
+      this.myFiles.totalBytes,
     );
 
     this.filesReactor.notifyListeners();
@@ -164,11 +164,8 @@ export class Core {
     this.peerChannel.send({
       type: "preview-stats",
       value: {
-        totalCount: this.myFiles.items.length,
-        totalBytes: this.myFiles.items.reduce(
-          (acc, file) => acc + file.sizeBytes,
-          0,
-        ),
+        totalCount: this.myFiles.totalCount,
+        totalBytes: this.myFiles.totalBytes,
       },
     });
   }
