@@ -2,6 +2,7 @@ import { JsonDebug } from "./JsonDebug";
 import { FullFilesState } from "../core/Core";
 import { TransferStats, TransferStatus } from "../core/PeerChannel";
 import { formatFileSize } from "../utils/formatSize";
+import { computeProgressText } from "../utils/computeProgress";
 
 type Props = {
   peerFiles: FullFilesState;
@@ -19,10 +20,10 @@ export function MyFiles({
   const fileCount = peerFiles.totalCount;
   const fileSize = peerFiles.totalBytes;
 
-  const progress =
-    transferStats.totalBytes > 0
-      ? transferStats.transferredBytes / transferStats.totalBytes
-      : 0;
+  const progressText = computeProgressText(
+    transferStats.transferredBytes,
+    transferStats.totalBytes,
+  );
 
   const canUploadFiles = uploadStatus !== "transfer";
 
@@ -97,7 +98,7 @@ export function MyFiles({
         </div>
       </div>
       <div>
-        Progress: <span>{progress * 100}%</span>
+        Progress: <span>{progressText}</span>
       </div>
     </>
   );

@@ -149,13 +149,16 @@ export class Uploader {
     }
     this.status.setValue("transfer");
 
-    this.writeBuffer = new Uint8Array(this.WRITE_CHUNK_SIZE);
+    this.resetInternals();
+
     this.zip = new Zip((err, data, done) => {
       if (err) {
         // when connection error is enountered, it thows here:
         // Error: Zip error: Cannot send: data channel is not open
         // TODO: move this error type to the status of the class
         // separate error value?
+        // TODO: backpressure issues encounter error:
+        // Error: Zip error: stream finished
         throw new Error(`Zip error: ${err.message}`);
       }
 
@@ -208,6 +211,7 @@ export class Uploader {
       }
       this.currentFileIndex = 0;
       this.totalProcessedBytes = 0;
+      this.lastStatSentBytes = 0;
     } else {
       this.currentFileIndex++;
     }

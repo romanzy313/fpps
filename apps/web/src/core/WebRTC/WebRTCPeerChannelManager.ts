@@ -7,6 +7,7 @@ import { MultiSubscriber } from "../../utils/MultiSubscriber";
 const PING_TIMEOUT = 10_000;
 const PING_INTERVAL = 5_000;
 const BACKPRESSURE_THRESHOLD = 1 << 20; // 1 Mb
+// const BACKPRESSURE_THRESHOLD = 1 << 15; // 32kb
 
 export type PeerConnectionStatus =
   | "connecting"
