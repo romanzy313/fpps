@@ -4,7 +4,10 @@ import { TestPeerChannels } from "./TestPeerChannels";
 import { Downloader } from "./Downloader";
 import { UnzipInflate } from "fflate";
 import { Unzip } from "fflate";
-import { generateTestFile } from "./testUtils";
+import {
+  generateTestFile12kbChunks,
+  generateTestFile256ByteChunks,
+} from "./testUtils";
 
 describe("TestPeerChannels", () => {
   it("should create a new instance", () => {
@@ -13,7 +16,7 @@ describe("TestPeerChannels", () => {
 
     const peerA = testChannels.getPeerChannel("a");
 
-    peerA.send({
+    peerA.sendMessage({
       type: "ping",
     });
 
@@ -177,9 +180,10 @@ describe("Uploader", () => {
     "should upload many large chunked files",
     { timeout: 10_000 },
     async () => {
-      const file3 = generateTestFile(500, "test-large"); // 0.5Mb
+      const file1 = generateTestFile256ByteChunks(500 * 4, "test-large1"); // 0.5Mb
+      const file2 = generateTestFile12kbChunks(10, "test-large2"); // 120kb
 
-      uploader.setFiles([file3, file3]);
+      uploader.setFiles([file1, file2]);
 
       expect(uploader.status.value).toBe("idle");
       expect(downloader.status.value).toBe("idle");
@@ -194,8 +198,11 @@ describe("Uploader", () => {
       await vi.waitUntil(() => writableClosed);
 
       expect(files.length).toBe(2);
-      expect(files[0]!.name).toBe("test-large");
-      expect(files[0]!.data).toEqual(await file3.bytes());
+      expect(files[0]!.name).toBe("test-large1");
+      expect(files[0]!.data).toEqual(await file1.bytes());
+
+      expect(files[1]!.name).toBe("test-large2");
+      expect(files[1]!.data).toEqual(await file2.bytes());
     },
   );
 
@@ -234,7 +241,7 @@ describe("Uploader", () => {
   });
 
   it("should abort transfer via uploader", async () => {
-    const fileLarge = generateTestFile(10_000, "test-large"); // 10Mb
+    const fileLarge = generateTestFile256ByteChunks(10_000 * 4, "test-large"); // 10Mb
 
     uploader.setFiles([fileLarge]);
 
@@ -269,7 +276,7 @@ describe("Uploader", () => {
   });
 
   it("should abort transfer via downloader", async () => {
-    const fileLarge = generateTestFile(10_000, "test-large"); // 10Mb
+    const fileLarge = generateTestFile256ByteChunks(10_000 * 4, "test-large"); // 10Mb
 
     uploader.setFiles([fileLarge]);
 

@@ -13,7 +13,7 @@ export class Downloader {
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 
   constructor(private peerChannel: PeerChannel) {
-    peerChannel.listenOnData(this.onData.bind(this));
+    peerChannel.listenOnMessage(this.onData.bind(this));
   }
 
   start(writableStream: WritableStream<Uint8Array>) {
@@ -34,7 +34,7 @@ export class Downloader {
 
     this.stats = zeroTransferStats();
     this.writer = writableStream.getWriter();
-    this.peerChannel.send({ type: "transfer-start" });
+    this.peerChannel.sendMessage({ type: "transfer-start" });
   }
 
   private isAborted() {
@@ -42,7 +42,7 @@ export class Downloader {
   }
 
   async abort() {
-    this.peerChannel.send({ type: "transfer-abort" });
+    this.peerChannel.sendMessage({ type: "transfer-abort" });
     this.internalAbort();
   }
 

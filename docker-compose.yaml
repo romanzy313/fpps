@@ -4,7 +4,7 @@ services:
   coturn:
     image: coturn/coturn:4.6.3
     container_name: coturn
-    restart: unless-stopped
+    restart: on-failure
     ports:
       - "0.0.0.0:3478:3478"
       - "0.0.0.0:3478:3478/udp"

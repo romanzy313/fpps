@@ -363,13 +363,13 @@ export class WebRTCPeerChannel implements PeerChannel {
   hasBackpressure(): boolean {
     return this.manager._hasBackpressure;
   }
-  send(message: PeerMessage): void {
+  sendMessage(message: PeerMessage): void {
     this.manager._send(message);
   }
   listenOnDrained(cb: () => void): void {
     this.manager._drainSubscribers.subscribe(cb);
   }
-  listenOnData(cb: (message: PeerMessage) => void): void {
+  listenOnMessage(cb: (message: PeerMessage) => void): void {
     this.manager._messageSubscribers.subscribe(cb);
   }
 }

@@ -1,12 +1,12 @@
 export interface PeerChannelSender {
   isReady(): boolean;
   hasBackpressure(): boolean;
-  send(message: PeerMessage): void;
+  sendMessage(message: PeerMessage): void;
   listenOnDrained(cb: () => void): void; // TODO: return unsub function
 }
 
 export interface PeerChannelReciever {
-  listenOnData(cb: (message: PeerMessage) => void): void;
+  listenOnMessage(cb: (message: PeerMessage) => void): void;
 }
 
 export interface PeerChannel extends PeerChannelSender, PeerChannelReciever {}
@@ -47,7 +47,7 @@ export type PeerMessage =
 
 export class TransferProtocol {
   static encode(message: PeerMessage): Uint8Array {
-    function stringify(value: any) {
+    function stringify(value: unknown) {
       return new TextEncoder().encode(JSON.stringify(value));
     }
 

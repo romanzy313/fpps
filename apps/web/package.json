@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --mode development",
+    "dev": "vite --mode development --host",
     "dev:test": "vitest",
     "build": "vite build",
     "test": "vitest --run --coverage",

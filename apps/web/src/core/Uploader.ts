@@ -10,12 +10,15 @@ import { ValueSubscriber } from "../utils/ValueSubscriber";
 export class Uploader {
   // config vars
   private READ_CHUNK_SIZE = 1 << 13; // 8kb chunk size
-  // private READ_CHUNK_SIZE = 777; // temp for now
+  private WRITE_CHUNK_SIZE = this.READ_CHUNK_SIZE * 3; // 3 times the chunk size, 24kb
+  private DIRECT_WRITE_LIMIT = 1 << 12; // 4kb
   // TODO: send the progress every 0.5 seconds!
   private PROGRESS_EVERY_BYTES = this.READ_CHUNK_SIZE * 16;
 
   private files: File[] = [];
   status = new ValueSubscriber<TransferStatus>("idle");
+  private writeBuffer = new Uint8Array(this.WRITE_CHUNK_SIZE);
+  private writeBufferPos = 0;
   private zip: Zip | null = null;
   private currentFileIndex = 0;
   private totalProcessedBytes = 0;
@@ -28,7 +31,7 @@ export class Uploader {
 
   constructor(private peerChannel: PeerChannel) {
     peerChannel.listenOnDrained(this.onDrained.bind(this));
-    peerChannel.listenOnData(this.onData.bind(this));
+    peerChannel.listenOnMessage(this.onData.bind(this));
   }
 
   // TODO: for some reason this does not count duplicate file bytes
@@ -69,14 +72,68 @@ export class Uploader {
   private resetInternals() {
     this.zip = null;
     this.current = null;
+    this.writeBufferPos = 0;
+  }
+
+  private flushTransferChunks() {
+    if (this.writeBufferPos > 0) {
+      // console.log("FLUSHING TRANSFER CHUNKS, size", this.writeBufferPos);
+      this.peerChannel.sendMessage({
+        type: "transfer-chunk",
+        value: this.writeBuffer.slice(0, this.writeBufferPos),
+      });
+      this.writeBufferPos = 0;
+    }
+  }
+
+  private sendBufferedChunk(chunk: Uint8Array) {
+    // optimization for large files
+    if (
+      this.writeBufferPos === 0 &&
+      chunk.byteLength > this.DIRECT_WRITE_LIMIT
+    ) {
+      // console.log("WRITING LARGE CHUNK OPTIMIZATION, size", chunk.byteLength);
+      this.peerChannel.sendMessage({
+        type: "transfer-chunk",
+        value: chunk,
+      });
+      return;
+    }
+
+    // this should never happen, but just in case
+    // as large chunks are a bit above 8kb, so two of them should always fit
+    // into the write buffer (which is 3 times 8kb)
+    if (this.writeBufferPos + chunk.byteLength > this.WRITE_CHUNK_SIZE) {
+      console.warn("WRITE BUFFER OVERFLOW, size", chunk.byteLength);
+      this.flushTransferChunks();
+      this.peerChannel.sendMessage({
+        type: "transfer-chunk",
+        value: chunk,
+      });
+      return;
+    }
+
+    this.writeBuffer.set(chunk, this.writeBufferPos);
+    this.writeBufferPos += chunk.byteLength;
+
+    // send full payload if its bigger then the chunk
+    if (this.writeBufferPos >= this.DIRECT_WRITE_LIMIT) {
+      this.flushTransferChunks();
+    } else {
+      // console.log("BUFFERED CHUNK, size", chunk.byteLength);
+    }
   }
 
   private done() {
     // console.log("DONE SENDING STATS", {
     //   value: this.getStats(),
     // });
-    this.peerChannel.send({ type: "transfer-stats", value: this.getStats() });
-    this.peerChannel.send({ type: "transfer-done" });
+    this.flushTransferChunks();
+    this.peerChannel.sendMessage({
+      type: "transfer-stats",
+      value: this.getStats(),
+    });
+    this.peerChannel.sendMessage({ type: "transfer-done" });
     this.status.setValue("done");
     this.resetInternals();
   }
@@ -91,6 +148,7 @@ export class Uploader {
     }
     this.status.setValue("transfer");
 
+    this.writeBuffer = new Uint8Array(this.WRITE_CHUNK_SIZE);
     this.zip = new Zip((err, data, done) => {
       if (err) {
         // when connection error is enountered, it thows here:
@@ -110,19 +168,20 @@ export class Uploader {
       //   done,
       // );
       // backpressure is managed on reading side
-      this.peerChannel.send({ type: "transfer-chunk", value: data });
+      // this.peerChannel.sendMessage({ type: "transfer-chunk", value: data });
+      this.sendBufferedChunk(data);
 
       if (done) {
-        console.log("ZIP WAS ENDED, DONE");
+        // console.log("ZIP WAS ENDED, DONE");
 
         this.done();
       }
     });
 
-    this.peerChannel.send({
+    this.peerChannel.sendMessage({
       type: "transfer-started",
     });
-    this.peerChannel.send({
+    this.peerChannel.sendMessage({
       type: "transfer-stats",
       value: this.getStats(),
     });
@@ -176,7 +235,7 @@ export class Uploader {
   }
 
   private process() {
-    if (this.isAborted()) {
+    if (this.status.value !== "transfer") {
       return;
     }
 
@@ -227,7 +286,7 @@ export class Uploader {
         // console.log("PROGRESS SEND STATS", {
         //   value: this.getStats(),
         // });
-        this.peerChannel.send({
+        this.peerChannel.sendMessage({
           type: "transfer-stats",
           value: this.getStats(),
         });
@@ -263,7 +322,7 @@ export class Uploader {
 
   abort() {
     this.internalAbort();
-    this.peerChannel.send({ type: "transfer-abort" });
+    this.peerChannel.sendMessage({ type: "transfer-abort" });
   }
 
   private internalAbort() {

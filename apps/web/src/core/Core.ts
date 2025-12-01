@@ -101,7 +101,7 @@ export class Core {
       },
     );
     this.peerChannel = this.peerManager.getPeerChannel();
-    this.peerChannel.listenOnData((message) => {
+    this.peerChannel.listenOnMessage((message) => {
       switch (message.type) {
         case "preview-stats":
           this.peerFiles.totalCount = message.value.totalCount;
@@ -161,7 +161,7 @@ export class Core {
   }
 
   private sendPreviewStats() {
-    this.peerChannel.send({
+    this.peerChannel.sendMessage({
       type: "preview-stats",
       value: {
         totalCount: this.myFiles.totalCount,

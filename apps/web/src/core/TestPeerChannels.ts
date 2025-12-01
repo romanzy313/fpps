@@ -20,7 +20,7 @@ class TestPeerChannel implements PeerChannel {
     return this._underBackpressure;
   }
 
-  send(message: PeerMessage): void {
+  sendMessage(message: PeerMessage): void {
     this._sendMessages.push(message);
     this.parent.peerSent(this.index, message);
   }
@@ -29,7 +29,7 @@ class TestPeerChannel implements PeerChannel {
     this._onDrainedCallback = cb;
   }
 
-  listenOnData(cb: (message: PeerMessage) => void): void {
+  listenOnMessage(cb: (message: PeerMessage) => void): void {
     this._onDataCallback = cb;
   }
 }
