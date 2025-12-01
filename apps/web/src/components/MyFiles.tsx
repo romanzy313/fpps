@@ -9,6 +9,7 @@ type Props = {
   uploadStatus: TransferStatus;
   transferStats: TransferStats;
   addMyFiles: (files: File[]) => void;
+  abortUpload: () => void;
 };
 
 export function MyFiles({
@@ -16,6 +17,7 @@ export function MyFiles({
   uploadStatus,
   transferStats,
   addMyFiles,
+  abortUpload,
 }: Props) {
   const fileCount = peerFiles.totalCount;
   const fileSize = peerFiles.totalBytes;
@@ -82,6 +84,12 @@ export function MyFiles({
             multiple
             onChange={(e) => onFilesSelect(e.currentTarget.files!)}
           />
+        </div>
+        <div>
+          <div>Stop upload</div>
+          <button disabled={uploadStatus !== "transfer"} onClick={abortUpload}>
+            Stop
+          </button>
         </div>
       </div>
       <div>

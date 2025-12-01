@@ -9,6 +9,7 @@ type Props = {
   transferStats: TransferStats;
   downloadStatus: TransferStatus;
   startDownload: () => void;
+  abortDownload: () => void;
 };
 
 export function PeerFiles({
@@ -16,6 +17,7 @@ export function PeerFiles({
   downloadStatus,
   transferStats,
   startDownload,
+  abortDownload,
 }: Props) {
   const fileCount = peerFiles.totalCount;
   const fileSizeBytes = peerFiles.totalBytes;
@@ -25,10 +27,12 @@ export function PeerFiles({
     transferStats.totalBytes,
   );
 
+  const filesSize = formatFileSize(fileSizeBytes);
+
   return (
     <>
       <h2>
-        Peer Files ({fileCount} files, {formatFileSize(fileSizeBytes)})
+        Peer Files ({fileCount} files, {filesSize})
       </h2>
       <div className="bg-grey" style={{ height: "20rem", overflowY: "auto" }}>
         <div>File browser does here</div>
@@ -43,13 +47,24 @@ export function PeerFiles({
           alignItems: "center",
         }}
       >
-        <button
-          type="button"
-          disabled={fileCount === 0 || downloadStatus === "transfer"}
-          onClick={() => startDownload()}
-        >
-          Download {fileCount} files as ZIP
-        </button>
+        <div>
+          <button
+            type="button"
+            disabled={fileCount === 0 || downloadStatus === "transfer"}
+            onClick={() => startDownload()}
+          >
+            Download {fileCount} ({filesSize}) files as ZIP
+          </button>
+        </div>
+        <div>
+          <button
+            type="button"
+            disabled={downloadStatus !== "transfer"}
+            onClick={() => abortDownload()}
+          >
+            Stop
+          </button>
+        </div>
       </div>
 
       <div>

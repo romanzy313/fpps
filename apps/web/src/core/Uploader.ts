@@ -326,8 +326,8 @@ export class Uploader {
   }
 
   abort() {
-    this.internalAbort();
     this.peerChannel.sendMessage({ type: "transfer-abort" });
+    this.internalAbort();
   }
 
   private internalAbort() {
@@ -346,7 +346,9 @@ export class Uploader {
         this.start();
         break;
       case "transfer-abort":
-        this.internalAbort();
+        if (this.status.value === "transfer") {
+          this.internalAbort();
+        }
         break;
     }
   }

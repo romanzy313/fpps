@@ -76,6 +76,7 @@ export function Room() {
             uploadStatus={uploadStatus}
             addMyFiles={addMoreFiles}
             transferStats={uploadStats}
+            abortUpload={abortUpload}
           ></MyFiles>
         </div>
         <div className={"peer-files"}>
@@ -84,6 +85,7 @@ export function Room() {
             downloadStatus={downloadStatus}
             startDownload={startDownload}
             transferStats={downloadStats}
+            abortDownload={abortDownload}
           ></PeerFiles>
         </div>
       </div>

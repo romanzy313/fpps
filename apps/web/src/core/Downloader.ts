@@ -49,7 +49,7 @@ export class Downloader {
   private async internalAbort() {
     if (this.status.value !== "transfer") {
       throw new Error(
-        `Cannot abort a non-downloading transfer (bad status: ${this.status})`,
+        `Cannot abort a non-downloading transfer (bad status: ${this.status.value})`,
       );
     }
 
@@ -106,7 +106,9 @@ export class Downloader {
         // no-op
         break;
       case "transfer-abort":
-        this.internalAbort();
+        if (this.status.value === "transfer") {
+          this.internalAbort();
+        }
         break;
       default:
         throw new Error(`Unknown message type`);
