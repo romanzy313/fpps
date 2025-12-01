@@ -10,6 +10,8 @@ import {
   zeroTransferStats,
 } from "../core/PeerChannel";
 
+import { config } from "../config";
+
 const STATS_UPDATE_INTERVAL_MS = 500;
 
 export function useRoom() {
@@ -64,6 +66,10 @@ export function useRoom() {
       setDownloadStats(newCore.downloadStatsValue());
       setUploadStats(newCore.uploadStatsValue());
     }, STATS_UPDATE_INTERVAL_MS);
+
+    // if (typeof window !== "undefined") {
+    //   window.
+    // }
 
     return () => {
       newCore.dispose();

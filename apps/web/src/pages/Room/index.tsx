@@ -27,6 +27,26 @@ export function Room() {
 
   return (
     <div>
+      <script src="/streamsaver/StreamSaver.js"></script>
+      <button
+        onClick={async () => {
+          const stream = window.streamSaver.createWriteStream("please.txt", {});
+
+          const writer = stream.getWriter();
+          // await writer.write(new TextEncoder().encode("please"));
+          // await writer.write(new TextEncoder().encode(" work\n"));
+
+          const count = 100_000;
+
+          for (let i = 0; i < count; i++) {
+            await writer.write(new TextEncoder().encode("please "));
+          }
+
+          await writer.close();
+        }}
+      >
+        Test download
+      </button>
       <h1>Room</h1>
       <pre>
         <code>

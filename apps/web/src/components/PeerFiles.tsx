@@ -19,6 +19,11 @@ export function PeerFiles({
   const fileCount = peerFiles.totalCount;
   const fileSizeBytes = peerFiles.totalBytes;
 
+  const progress =
+    transferStats.totalBytes > 0
+      ? transferStats.transferredBytes / transferStats.totalBytes
+      : 0;
+
   return (
     <>
       <h2>
@@ -56,6 +61,9 @@ export function PeerFiles({
           <div>
             <span>{formatFileSize(transferStats.transferredBytes)}</span> out of{" "}
             <span>{formatFileSize(transferStats.totalBytes)}</span>
+          </div>
+          <div>
+            Progress: <span>{progress * 100}%</span>
           </div>
         </div>
       </div>

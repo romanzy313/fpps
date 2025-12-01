@@ -1,4 +1,4 @@
-import { Zip, ZipDeflate } from "fflate/browser";
+import { AsyncZipDeflate, Zip } from "fflate/browser";
 import {
   PeerChannel,
   PeerMessage,
@@ -7,6 +7,7 @@ import {
 } from "./PeerChannel";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 
+// TODO: use readable steams instead of slice
 export class Uploader {
   // config vars
   private READ_CHUNK_SIZE = 1 << 13; // 8kb chunk size
@@ -25,7 +26,7 @@ export class Uploader {
   private lastStatSentBytes = 0;
   private current: {
     file: File;
-    deflate: ZipDeflate;
+    deflate: AsyncZipDeflate;
     progress: number;
   } | null = null;
 
@@ -220,7 +221,7 @@ export class Uploader {
     }
     const file = this.files[this.currentFileIndex]!;
 
-    const deflate = new ZipDeflate(file.webkitRelativePath || file.name, {
+    const deflate = new AsyncZipDeflate(file.webkitRelativePath || file.name, {
       level: 6,
     });
     this.zip.add(deflate);

@@ -19,6 +19,11 @@ export function MyFiles({
   const fileCount = peerFiles.totalCount;
   const fileSize = peerFiles.totalBytes;
 
+  const progress =
+    transferStats.totalBytes > 0
+      ? transferStats.transferredBytes / transferStats.totalBytes
+      : 0;
+
   const canUploadFiles = uploadStatus !== "transfer";
 
   function onFilesSelect(fileList: FileList) {
@@ -90,6 +95,9 @@ export function MyFiles({
             <span>{formatFileSize(transferStats.totalBytes)}</span>
           </div>
         </div>
+      </div>
+      <div>
+        Progress: <span>{progress * 100}%</span>
       </div>
     </>
   );

@@ -11,8 +11,8 @@ import { PeerChannel } from "./PeerChannel";
 import { parseFile } from "../utils/parseFile";
 import { Uploader } from "./Uploader";
 import { Downloader } from "./Downloader";
-import { createWriteStream } from "streamsaver";
 // import * as streamsaver from "streamsaver";
+// import { config } from "../config";
 
 export type FileItem = {
   path: string;
@@ -150,7 +150,10 @@ export class Core {
   public startDownload() {
     // const streamSaver = window.streamSaver;
     // const writeStream = streamSaver.createWriteStream("test.zip", {});
-    const writeStream = createWriteStream("download.zip", {});
+    const writeStream = window.streamSaver.createWriteStream(
+      "download.zip",
+      {},
+    );
     this.downloader.start(writeStream);
   }
   public abortDownload() {
