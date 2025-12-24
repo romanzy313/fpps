@@ -21,6 +21,10 @@ class TestPeerChannel implements PeerChannel {
   }
 
   sendMessage(message: PeerMessage): void {
+    // console.log("SENDING A MESSAGE", {
+    //   index: this.index,
+    //   message,
+    // });
     this._sendMessages.push(message);
     this.parent.peerSent(this.index, message);
   }

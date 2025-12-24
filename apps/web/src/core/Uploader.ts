@@ -1,4 +1,3 @@
-import { AsyncZipDeflate, Zip } from "fflate/browser";
 import {
   PeerChannel,
   PeerMessage,
@@ -9,7 +8,7 @@ import { ValueSubscriber } from "../utils/ValueSubscriber";
 
 export class Uploader {
   // config vars
-  private WRITE_CHUNK_SIZE = 1 << 14; // 16kb
+  private WRITE_CHUNK_SIZE = 1 << 15; // 32kb
   // TODO: send the progress every 0.5 seconds!
   private PROGRESS_EVERY_BYTES = (1 << 13) * 16; // 8 * 16kb
 
@@ -17,18 +16,11 @@ export class Uploader {
   status = new ValueSubscriber<TransferStatus>("idle");
   private writeBuffer = new Uint8Array(this.WRITE_CHUNK_SIZE);
   private writeBufferPos = 0;
-  private zip: Zip | null = null;
   private currentFileIndex = 0;
   private totalProcessedBytes = 0;
   private lastStatSentBytes = 0;
-  private current: {
-    reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>>;
-    deflate: AsyncZipDeflate;
-    progress: number;
-  } | null = null;
 
   constructor(private peerChannel: PeerChannel) {
-    peerChannel.listenOnDrained(this.onDrained.bind(this));
     peerChannel.listenOnMessage(this.onData.bind(this));
   }
 
@@ -67,15 +59,6 @@ export class Uploader {
     return this.status.value === "aborted";
   }
 
-  private resetInternals() {
-    this.zip = null;
-    if (this.current?.reader) {
-      this.current.reader.cancel();
-    }
-    this.current = null;
-    this.writeBufferPos = 0;
-  }
-
   private flushTransferChunks() {
     if (this.writeBufferPos > 0) {
       // console.log("FLUSHING TRANSFER CHUNKS, size", this.writeBufferPos);
@@ -90,7 +73,6 @@ export class Uploader {
   private sendBufferedChunk(chunk: Uint8Array) {
     // optimization for large chunks
     if (this.writeBufferPos === 0 && chunk.byteLength > this.WRITE_CHUNK_SIZE) {
-      // console.log("WRITING LARGE CHUNK OPTIMIZATION, size", chunk.byteLength);
       this.peerChannel.sendMessage({
         type: "transfer-chunk",
         value: chunk,
@@ -104,6 +86,7 @@ export class Uploader {
       this.writeBufferPos += chunk.byteLength;
     } else {
       this.flushTransferChunks();
+
       this.peerChannel.sendMessage({
         type: "transfer-chunk",
         value: chunk,
@@ -112,9 +95,6 @@ export class Uploader {
   }
 
   private done() {
-    // console.log("DONE SENDING STATS", {
-    //   value: this.getStats(),
-    // });
     this.flushTransferChunks();
     this.peerChannel.sendMessage({
       type: "transfer-stats",
@@ -122,10 +102,9 @@ export class Uploader {
     });
     this.peerChannel.sendMessage({ type: "transfer-done" });
     this.status.setValue("done");
-    this.resetInternals();
   }
 
-  private start() {
+  private async start() {
     if (!this.peerChannel.isReady()) {
       throw new Error("Peer channel is not ready to upload");
     }
@@ -133,40 +112,19 @@ export class Uploader {
     if (this.status.value === "transfer") {
       throw new Error("Cannot start transfer: uploader is already uploading");
     }
+
+    if (this.files.length === 0) {
+      throw new Error("No files to transfer");
+    }
+
     this.status.setValue("transfer");
 
-    this.resetInternals();
+    this.writeBufferPos = 0;
 
-    this.zip = new Zip((err, data, done) => {
-      if (err) {
-        // when connection error is enountered, it thows here:
-        // Error: Zip error: Cannot send: data channel is not open
-        // TODO: move this error type to the status of the class
-        // separate error value?
-        // TODO: backpressure issues encounter error:
-        // Error: Zip error: stream finished
-        throw new Error(`Zip error: ${err.message}`);
-      }
-
-      // TODO: some chunks are really small. need to accumulate internally
-      // if the zip contains lots of small files, each one is a "chunk here"
-      // console.log(
-      //   "ZIP CHUNK OF SIZE",
-      //   data.byteLength,
-      //   "SENT",
-      //   "IS DONE?",
-      //   done,
-      // );
-      // backpressure is managed on reading side
-      // this.peerChannel.sendMessage({ type: "transfer-chunk", value: data });
-      this.sendBufferedChunk(data);
-
-      if (done) {
-        // console.log("ZIP WAS ENDED, DONE");
-
-        this.done();
-      }
-    });
+    // TODO: careful
+    this.currentFileIndex = 0;
+    this.totalProcessedBytes = 0;
+    this.lastStatSentBytes = 0;
 
     this.peerChannel.sendMessage({
       type: "transfer-started",
@@ -176,98 +134,58 @@ export class Uploader {
       value: this.getStats(),
     });
 
-    this.advance();
-    this.process();
-  }
+    const firstFile = this.files[0]!;
+    let reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>> = firstFile
+      .stream()
+      .getReader();
 
-  // returns true if next files exists
-  // true value means processing must continue
-  private advance(): boolean {
-    if (this.isAborted()) {
-      return false;
-    }
-
-    if (!this.zip) {
-      throw new Error("No zip instance");
-    }
-
-    if (!this.current) {
-      // initialization
-      if (this.files.length === 0) {
-        throw new Error("No files to initially advance");
-      }
-      this.currentFileIndex = 0;
-      this.totalProcessedBytes = 0;
-      this.lastStatSentBytes = 0;
-    } else {
-      this.currentFileIndex++;
-    }
-
-    if (this.current) {
-      this.current.reader.releaseLock();
-    }
-
-    if (this.currentFileIndex >= this.files.length) {
-      // reached the end
-      this.current = null; // this is ugly very much
-      this.zip.end();
-
-      return false;
-    }
-    const file = this.files[this.currentFileIndex]!;
-
-    const deflate = new AsyncZipDeflate(file.webkitRelativePath || file.name, {
-      level: 6,
+    this.peerChannel.sendMessage({
+      type: "transfer-next-file",
+      name: firstFile.webkitRelativePath || firstFile.name,
     });
-    this.zip.add(deflate);
 
-    this.current = {
-      reader: file.stream().getReader(),
-      deflate,
-      progress: 0,
-    };
-
-    return true;
-  }
-
-  private process() {
-    if (this.status.value !== "transfer") {
-      return;
-    }
-
-    if (!this.peerChannel.isReady()) {
-      throw new Error("Connection problem, do something about it");
-    }
-
-    if (this.peerChannel.hasBackpressure()) {
-      console.warn("Tried to process under backpressure, retrying later");
-      return;
-    }
-
-    if (!this.current) {
-      console.error("CANNOT ADVANCE: no current", this);
-      throw new Error("Assertion error: No current file 1");
-    }
-
-    const { reader, deflate } = this.current;
-
-    reader.read().then(({ value, done }) => {
-      console.log("READ VALUE", { lenBytes: value?.byteLength, done });
-      if (done) {
-        deflate.push(new Uint8Array([]), true);
-
-        if (this.advance()) {
-          this.process();
-        }
+    for (;;) {
+      if (this.isAborted()) {
         return;
       }
 
-      const uncompressedBytes = value.byteLength;
+      if (this.peerChannel.hasBackpressure()) {
+        await sleep(10);
+        continue;
+      }
 
-      this.current!.progress += uncompressedBytes;
-      this.totalProcessedBytes += uncompressedBytes;
+      // TODO: this could fail?
+      const { value, done } = await reader.read();
 
-      deflate.push(value, false);
+      // console.log("READING A FILE", {
+      //   byteLen: value?.byteLength,
+      //   done,
+      //   index: this.currentFileIndex,
+      // });
+      await sleep(0); // this is needed for vite to pass the tests... ugh
+
+      if (done) {
+        reader.releaseLock();
+
+        this.flushTransferChunks(); // inefficient, all coms must be buffered
+
+        this.currentFileIndex++;
+        if (this.currentFileIndex === this.files.length) {
+          // actually done
+          // index is out of bounds, so that file progress is correct
+          this.done();
+          return;
+        }
+
+        const nextFile = this.files[this.currentFileIndex]!;
+        reader = nextFile.stream().getReader();
+        // send the next file message
+        this.peerChannel.sendMessage({
+          type: "transfer-next-file",
+          name: nextFile.webkitRelativePath || nextFile.name,
+        });
+        continue;
+      }
 
       if (
         this.totalProcessedBytes - this.lastStatSentBytes >
@@ -283,8 +201,9 @@ export class Uploader {
         });
       }
 
-      return this.process();
-    });
+      this.totalProcessedBytes += value.byteLength;
+      this.sendBufferedChunk(value);
+    }
   }
 
   abort() {
@@ -299,7 +218,6 @@ export class Uploader {
       );
     }
     this.status.setValue("aborted");
-    this.resetInternals();
   }
 
   private onData(message: PeerMessage) {
@@ -315,15 +233,11 @@ export class Uploader {
     }
   }
 
-  private onDrained() {
-    // ignore drain when transfer finished...
-    // ugly ugly
-    if (this.current !== null) {
-      this.process();
-    }
-  }
-
   dispose() {
     this.status.dispose();
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((res) => setTimeout(res, ms));
 }

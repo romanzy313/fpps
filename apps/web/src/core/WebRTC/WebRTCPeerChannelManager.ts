@@ -22,7 +22,7 @@ export interface PeerConnectionOptions {
 
 export type PeerChannelCallbacks = {
   onConnectionStateChange: (status: PeerConnectionStatus) => void;
-  onError: (message: string) => void;
+  onError: (error: Error) => void;
 };
 
 export class WebRTCPeerChannelManager {
@@ -315,7 +315,7 @@ export class WebRTCPeerChannelManager {
       // TODO: handle
       console.error("WEBRTC Data channel error event!!! :", event);
 
-      this.callbacks.onError(event.error.message);
+      this.callbacks.onError(event.error);
     };
 
     this.dataChannel.onclose = () => {

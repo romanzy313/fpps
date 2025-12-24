@@ -6,11 +6,14 @@ import {
   zeroTransferStats,
 } from "./PeerChannel";
 import { PeerChannel } from "./PeerChannel";
+import { AsyncZipDeflate, Zip } from "fflate/browser";
 
 export class Downloader {
   status = new ValueSubscriber<TransferStatus>("idle");
   private stats: TransferStats = zeroTransferStats();
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+  private zip: Zip | null = null;
+  private deflate: AsyncZipDeflate | null = null;
 
   constructor(private peerChannel: PeerChannel) {
     peerChannel.listenOnMessage(this.onData.bind(this));
@@ -35,6 +38,35 @@ export class Downloader {
     this.stats = zeroTransferStats();
     this.writer = writableStream.getWriter();
     this.peerChannel.sendMessage({ type: "transfer-start" });
+    this.zip = new Zip((err, data, done) => {
+      // console.log("zip callback", { err, byteLen: data?.byteLength, done });
+      if (!this.writer) {
+        throw new Error("Assertion failed: writer cant be null");
+      }
+      if (err) {
+        this.writer.abort();
+        this.writer = null;
+        this.deflate = null;
+        this.zip = null;
+        // when terminate is called this is an expected behavior?
+        // this.status.setValue("aborted") // ???
+        throw new Error(`Zip error: ${err.message}`);
+      }
+
+      this.writer.write(data);
+
+      if (done) {
+        // console.log("ZIP SAID ITS DONE");
+        this.writer.close().then(() => {
+          // console.log("CLOSED WRITER");
+          // cleanup code here
+          this.writer = null;
+          this.zip = null;
+          this.deflate = null;
+          this.status.setValue("done");
+        });
+      }
+    });
   }
 
   private isAborted() {
@@ -57,16 +89,11 @@ export class Downloader {
     if (!this.writer) {
       throw new Error("Cannot abort a non-downloading transfer (no writer)");
     }
-    await this.writer.abort();
-    this.writer = null;
-  }
-
-  private async done() {
-    this.status.setValue("done");
-    if (!this.writer) {
-      throw new Error("Cannot complete a transfer without a writer");
+    if (!this.zip) {
+      throw new Error("Cannot abort a non-downloading transfer (no zip)");
     }
-    await this.writer.close();
+    this.zip.terminate();
+    await this.writer.abort();
     this.writer = null;
   }
 
@@ -75,9 +102,26 @@ export class Downloader {
   }
 
   private onData(message: PeerMessage) {
+    // console.log("NEW MESSAGE", message);
     switch (message.type) {
       case "transfer-started":
         this.status.setValue("transfer");
+        break;
+      case "transfer-next-file":
+        {
+          if (!this.zip) {
+            throw new Error("Assertion error: zip undefined on next file");
+          }
+          if (this.deflate) {
+            this.deflate.push(new Uint8Array(), true);
+          }
+
+          const deflate = new AsyncZipDeflate(message.name, {
+            level: 4,
+          });
+          this.zip.add(deflate);
+          this.deflate = deflate;
+        }
         break;
       case "transfer-chunk":
         if (this.isAborted()) {
@@ -86,13 +130,22 @@ export class Downloader {
         if (this.status.value !== "transfer") {
           throw new Error("Cannot receive a chunk while not downloading");
         }
-        if (!this.writer) {
-          throw new Error("Cannot receive a chunk without a writer");
+        if (!this.zip || !this.deflate) {
+          throw new Error("Cannot receive a chunk without a zip and deflate");
         }
-        this.writer.write(message.value);
+        this.deflate.push(message.value);
         break;
       case "transfer-done":
-        this.done();
+        if (!this.zip) {
+          throw new Error("Assertion failed: this zip must be defined");
+        }
+        if (this.deflate) {
+          this.deflate.push(new Uint8Array(), true);
+        }
+
+        // console.log("TRANSFER IS DONE, ENDING ZIP");
+        this.zip.end();
+
         break;
       case "transfer-stats":
         // console.log("GOT STATS", {

@@ -39,6 +39,7 @@ export type PeerMessage =
   | { type: "ping" }
   | { type: "transfer-started" }
   | { type: "transfer-start" }
+  | { type: "transfer-next-file"; name: string }
   | { type: "transfer-chunk"; value: Uint8Array }
   | { type: "transfer-stats"; value: TransferStats }
   | { type: "transfer-abort" }
@@ -58,6 +59,11 @@ export class TransferProtocol {
         return new TextEncoder().encode("t0");
       case "transfer-started":
         return new TextEncoder().encode("t1");
+      case "transfer-next-file":
+        return new Uint8Array([
+          ...new TextEncoder().encode("t6"),
+          ...new TextEncoder().encode(message.name),
+        ]);
       case "transfer-chunk":
         return new Uint8Array([
           ...new TextEncoder().encode("t2"),
@@ -97,6 +103,9 @@ export class TransferProtocol {
     function json() {
       return JSON.parse(decoder.decode(rest));
     }
+    function string() {
+      return decoder.decode(rest);
+    }
 
     switch (type) {
       case "00":
@@ -105,6 +114,8 @@ export class TransferProtocol {
         return { type: "transfer-start" };
       case "t1":
         return { type: "transfer-started" };
+      case "t6":
+        return { type: "transfer-next-file", name: string() };
       case "t2":
         return { type: "transfer-chunk", value: rest };
       case "t3": {

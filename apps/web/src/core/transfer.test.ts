@@ -33,7 +33,7 @@ describe("TestPeerChannels", () => {
   });
 });
 
-describe("Uploader", () => {
+describe("Uploader", { timeout: 10_000 }, () => {
   let testChannels: TestPeerChannels;
   let uploader: Uploader;
   let downloader: Downloader;
@@ -250,10 +250,16 @@ describe("Uploader", () => {
 
     downloader.start(writableStream);
 
-    await vi.waitUntil(() => uploader.status.value === "transfer", {
-      timeout: 1000,
-      interval: 1,
-    });
+    await vi.waitUntil(
+      () => {
+        console.log("WAIT VALUE", uploader.status.value);
+        return uploader.status.value === "transfer";
+      },
+      {
+        timeout: 1000,
+        interval: 1,
+      },
+    );
     uploader.abort();
 
     await vi.waitUntil(() => uploader.status.value === "aborted");

@@ -96,7 +96,7 @@ export class Core {
           }
         },
         onError: (error) => {
-          console.error("WRAPPED ERROR", error);
+          console.error("WRAPPED ERROR", { error });
         },
       },
     );
