@@ -147,6 +147,21 @@ export class Core {
     }
   }
 
+  public clearFiles() {
+    this.uploader.setFiles([]);
+
+    this.myFiles.id = secureId();
+    this.myFiles.items = [];
+    this.myFiles.totalCount = 0;
+    this.myFiles.totalBytes = 0;
+
+    this.filesReactor.notifyListeners();
+
+    if (this.peerChannel.isReady()) {
+      this.sendPreviewStats();
+    }
+  }
+
   public startDownload() {
     // const streamSaver = window.streamSaver;
     // const writeStream = streamSaver.createWriteStream("test.zip", {});

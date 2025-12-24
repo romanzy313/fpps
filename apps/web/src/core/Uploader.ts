@@ -7,14 +7,11 @@ import {
 } from "./PeerChannel";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 
-// TODO: use readable steams instead of slice
 export class Uploader {
   // config vars
-  private READ_CHUNK_SIZE = 1 << 13; // 8kb chunk size
-  private WRITE_CHUNK_SIZE = this.READ_CHUNK_SIZE * 3; // 3 times the chunk size, 24kb
-  private DIRECT_WRITE_LIMIT = 1 << 12; // 4kb
+  private WRITE_CHUNK_SIZE = 1 << 14; // 16kb
   // TODO: send the progress every 0.5 seconds!
-  private PROGRESS_EVERY_BYTES = this.READ_CHUNK_SIZE * 16;
+  private PROGRESS_EVERY_BYTES = (1 << 13) * 16; // 8 * 16kb
 
   private files: File[] = [];
   status = new ValueSubscriber<TransferStatus>("idle");
@@ -25,7 +22,7 @@ export class Uploader {
   private totalProcessedBytes = 0;
   private lastStatSentBytes = 0;
   private current: {
-    file: File;
+    reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>>;
     deflate: AsyncZipDeflate;
     progress: number;
   } | null = null;
@@ -72,6 +69,9 @@ export class Uploader {
 
   private resetInternals() {
     this.zip = null;
+    if (this.current?.reader) {
+      this.current.reader.cancel();
+    }
     this.current = null;
     this.writeBufferPos = 0;
   }
@@ -88,11 +88,8 @@ export class Uploader {
   }
 
   private sendBufferedChunk(chunk: Uint8Array) {
-    // optimization for large files
-    if (
-      this.writeBufferPos === 0 &&
-      chunk.byteLength > this.DIRECT_WRITE_LIMIT
-    ) {
+    // optimization for large chunks
+    if (this.writeBufferPos === 0 && chunk.byteLength > this.WRITE_CHUNK_SIZE) {
       // console.log("WRITING LARGE CHUNK OPTIMIZATION, size", chunk.byteLength);
       this.peerChannel.sendMessage({
         type: "transfer-chunk",
@@ -101,27 +98,16 @@ export class Uploader {
       return;
     }
 
-    // this should never happen, but just in case
-    // as large chunks are a bit above 8kb, so two of them should always fit
-    // into the write buffer (which is 3 times 8kb)
-    if (this.writeBufferPos + chunk.byteLength > this.WRITE_CHUNK_SIZE) {
-      console.warn("WRITE BUFFER OVERFLOW, size", chunk.byteLength);
+    if (this.writeBufferPos + chunk.byteLength < this.WRITE_CHUNK_SIZE) {
+      // buffer
+      this.writeBuffer.set(chunk, this.writeBufferPos);
+      this.writeBufferPos += chunk.byteLength;
+    } else {
       this.flushTransferChunks();
       this.peerChannel.sendMessage({
         type: "transfer-chunk",
         value: chunk,
       });
-      return;
-    }
-
-    this.writeBuffer.set(chunk, this.writeBufferPos);
-    this.writeBufferPos += chunk.byteLength;
-
-    // send full payload if its bigger then the chunk
-    if (this.writeBufferPos >= this.DIRECT_WRITE_LIMIT) {
-      this.flushTransferChunks();
-    } else {
-      // console.log("BUFFERED CHUNK, size", chunk.byteLength);
     }
   }
 
@@ -189,6 +175,7 @@ export class Uploader {
       type: "transfer-stats",
       value: this.getStats(),
     });
+
     this.advance();
     this.process();
   }
@@ -216,9 +203,13 @@ export class Uploader {
       this.currentFileIndex++;
     }
 
+    if (this.current) {
+      this.current.reader.releaseLock();
+    }
+
     if (this.currentFileIndex >= this.files.length) {
       // reached the end
-      this.current = null;
+      this.current = null; // this is ugly very much
       this.zip.end();
 
       return false;
@@ -231,7 +222,7 @@ export class Uploader {
     this.zip.add(deflate);
 
     this.current = {
-      file,
+      reader: file.stream().getReader(),
       deflate,
       progress: 0,
     };
@@ -248,44 +239,39 @@ export class Uploader {
       throw new Error("Connection problem, do something about it");
     }
 
-    // TODO: actually check this
     if (this.peerChannel.hasBackpressure()) {
       console.warn("Tried to process under backpressure, retrying later");
-      // throw new Error("Cannot process under backpressure");
       return;
     }
 
     if (!this.current) {
+      console.error("CANNOT ADVANCE: no current", this);
       throw new Error("Assertion error: No current file 1");
     }
 
-    const { file, deflate } = this.current;
+    const { reader, deflate } = this.current;
 
-    const start = this.current.progress;
-    const end = Math.min(start + this.READ_CHUNK_SIZE, file.size);
+    reader.read().then(({ value, done }) => {
+      console.log("READ VALUE", { lenBytes: value?.byteLength, done });
+      if (done) {
+        deflate.push(new Uint8Array([]), true);
 
-    const slice = file.slice(start, end);
-    slice.arrayBuffer().then((ab) => {
-      if (this.isAborted()) {
+        if (this.advance()) {
+          this.process();
+        }
         return;
       }
-      if (!this.current) {
-        throw new Error("Assertion error: No current file 2");
-      }
 
-      const bytes = new Uint8Array(ab);
-      const uncompressedBytes = end - start;
-      this.current.progress += uncompressedBytes;
+      const uncompressedBytes = value.byteLength;
+
+      this.current!.progress += uncompressedBytes;
       this.totalProcessedBytes += uncompressedBytes;
 
-      const done = end === file.size;
-      deflate.push(bytes, done);
+      deflate.push(value, false);
 
-      // stats handling here
       if (
-        !done &&
         this.totalProcessedBytes - this.lastStatSentBytes >
-          this.PROGRESS_EVERY_BYTES
+        this.PROGRESS_EVERY_BYTES
       ) {
         this.lastStatSentBytes = this.totalProcessedBytes;
         // console.log("PROGRESS SEND STATS", {
@@ -297,31 +283,7 @@ export class Uploader {
         });
       }
 
-      // console.log(
-      //   "PROCESSED FILE",
-      //   "TOTAL COUNT:",
-      //   this.currentFileIndex,
-      //   "/",
-      //   this.totalFileCount,
-      //   "TOTAL SIZES:",
-      //   this.totalProcessedBytes,
-      //   "/",
-      //   this.totalSizeBytes,
-      //   "THIS FILE",
-      //   this.current.file.name,
-      //   this.current.progress,
-      //   "/",
-      //   this.current.file.size,
-      //   "IS DONE",
-      //   done,
-      // );
-      if (!done) {
-        return this.process();
-      }
-
-      if (this.advance()) {
-        this.process();
-      }
+      return this.process();
     });
   }
 
@@ -354,7 +316,11 @@ export class Uploader {
   }
 
   private onDrained() {
-    this.process();
+    // ignore drain when transfer finished...
+    // ugly ugly
+    if (this.current !== null) {
+      this.process();
+    }
   }
 
   dispose() {

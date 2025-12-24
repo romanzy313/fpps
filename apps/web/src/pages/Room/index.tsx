@@ -13,6 +13,7 @@ export function Room() {
     peerFiles,
     shareCode,
     addMoreFiles,
+    clearFiles,
     startDownload,
     abortDownload,
     abortUpload,
@@ -75,6 +76,7 @@ export function Room() {
             peerFiles={myFiles}
             uploadStatus={uploadStatus}
             addMyFiles={addMoreFiles}
+            clearFiles={clearFiles}
             transferStats={uploadStats}
             abortUpload={abortUpload}
           ></MyFiles>

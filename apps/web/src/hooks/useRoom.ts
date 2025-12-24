@@ -84,6 +84,10 @@ export function useRoom() {
     [core],
   );
 
+  const clearFiles = useCallback(() => {
+    core!.clearFiles();
+  }, [core]);
+
   const startDownload = useCallback(() => {
     core!.startDownload();
   }, [core]);
@@ -103,6 +107,7 @@ export function useRoom() {
     peerFiles,
     shareCode,
     addMoreFiles,
+    clearFiles,
     startDownload,
     abortDownload,
     abortUpload,
