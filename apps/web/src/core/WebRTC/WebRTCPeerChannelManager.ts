@@ -210,12 +210,30 @@ export class WebRTCPeerChannelManager {
     }
     // Handle ICE candidates
     this.pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        this.signalingApiMust.send({
-          type: "ice-candidate",
-          candidate: event.candidate.toJSON(),
-        });
+      if (!event.candidate) {
+        console.log("ICE candidate gathering complete.");
+        return;
       }
+
+      console.log("Candidate found:", event.candidate.candidate);
+
+      // Detect STUN (srflx) or TURN (relay) candidates
+      if (event.candidate.type === "srflx") {
+        console.log(
+          "✅ STUN server is reachable. Public IP:",
+          event.candidate.address,
+        );
+      } else if (event.candidate.type === "relay") {
+        console.log(
+          "✅ TURN server is working. Relay address:",
+          event.candidate.address,
+        );
+      }
+
+      this.signalingApiMust.send({
+        type: "ice-candidate",
+        candidate: event.candidate.toJSON(),
+      });
     };
 
     // Handle incoming data channel (for non-initiator)
