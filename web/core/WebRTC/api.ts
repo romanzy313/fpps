@@ -1,77 +1,90 @@
-// api signaling data
-export type ApiSignalingRequest =
-  | {
-      type: "message";
-      thisUser: string; // uuid of the sender
-      forUser: string; // uuid of the reciever
-      payloads: string[]; // base64 encoded, encrypted signaling payload
-    }
-  | { type: "poll"; thisUser: string }; // type: inbox?
-
-export type SignalingResponse = {
-  payloads: string[];
-};
-
-// TODO: make this zod safe
-export function parseApiSignalingRequest(json: unknown): ApiSignalingRequest {
-  return json as ApiSignalingRequest;
-}
-
-export function serializeApiSignalingPollRequest({
+export async function apiRead({
   myId,
+  secret,
 }: {
   myId: string;
-}): string {
-  const data: ApiSignalingRequest = {
-    type: "poll",
-    thisUser: myId,
+  secret: string;
+}): Promise<SignalingPayload[]> {
+  const req: ReadDTO = {
+    me: myId,
   };
 
-  return JSON.stringify(data);
+  const res = await fetch(`/api/signaling/read`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(req),
+  });
+
+  return parseResponse(res, secret);
 }
 
-export function serializeApiSignalingMessageRequest(values: {
+export async function apiSend({
+  myId,
+  peerId,
+  payloads,
+  secret,
+}: {
   myId: string;
   peerId: string;
+  payloads: SignalingPayload[];
   secret: string;
-  payloads: P2PSignalingPayload[];
-}): string {
-  const data: ApiSignalingRequest = {
-    type: "message",
-    thisUser: values.myId,
-    forUser: values.peerId,
-    payloads: values.payloads.map((payload) =>
-      serializeP2PSignalingPayload(payload, values.secret),
+}): Promise<SignalingPayload[]> {
+  const req: SendDTO = {
+    me: myId,
+    peer: peerId,
+    payloads: payloads.map((payload) =>
+      serializeP2PSignalingPayload(payload, secret),
     ),
   };
 
-  return JSON.stringify(data);
+  const res = await fetch(`/api/signaling/send`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(req),
+  });
+
+  return parseResponse(res, secret);
 }
 
-export function parseApiSignalingResponse(
-  json: unknown,
-  secret: string,
-): P2PSignalingPayload[] {
-  const response = json as SignalingResponse;
+type SendDTO = {
+  me: string;
+  peer: string;
+  payloads: string[];
+};
 
-  const out = response.payloads.map((payload) =>
+type ReadDTO = {
+  me: string;
+};
+
+type ResponseDTO = {
+  payloads: string[];
+};
+
+type ErrorDTO = {
+  error: string;
+};
+
+async function parseResponse(
+  res: Response,
+  secret: string,
+): Promise<SignalingPayload[]> {
+  const json: unknown = await res.json();
+
+  if (!res.ok) {
+    throw new Error((json as ErrorDTO).error);
+  }
+
+  return (json as ResponseDTO).payloads.map((payload) =>
     parseP2PSignalingPayload(payload, secret),
   );
-
-  return out;
-}
-
-// re-exported from lib.dom.d.ts
-// TODO: include this in tsconfig instead
-interface RTCIceCandidateInit {
-  candidate?: string;
-  sdpMLineIndex?: number | null;
-  sdpMid?: string | null;
-  usernameFragment?: string | null;
 }
 
 // peer to peer singaling payloads
-export type P2PSignalingPayload =
+export type SignalingPayload =
   | {
       type: "offer";
       sdp: string;
@@ -85,19 +98,27 @@ export type P2PSignalingPayload =
       candidate: RTCIceCandidateInit;
     };
 
-export function parseP2PSignalingPayload(
+function parseP2PSignalingPayload(
   base64Str: string,
-  _secret: string,
-): P2PSignalingPayload {
+  secret: string,
+): SignalingPayload {
+  if (secret) {
+    throw new Error("Encryption is not implemented yet");
+  }
+
   const json = JSON.parse(atob(base64Str));
 
-  return json as P2PSignalingPayload;
+  return json as SignalingPayload;
 }
 
-export function serializeP2PSignalingPayload(
-  payload: P2PSignalingPayload,
-  _secret: string,
+function serializeP2PSignalingPayload(
+  payload: SignalingPayload,
+  secret: string,
 ): string {
+  if (secret) {
+    throw new Error("Encryption is not implemented yet");
+  }
+
   const json = JSON.stringify(payload);
 
   return btoa(json);

@@ -97,7 +97,11 @@ func (routes *SignalingApi) sendHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	writeResponse(w, http.StatusOK, responseDTO{Payloads: []string{}})
+	payloads := routes.mailbox.ReadAll(req.Me)
+
+	writeResponse(w, http.StatusOK, responseDTO{Payloads: payloads})
+
+	// fmt.Printf("SEND from = %s, to = %s, payloadsSent = %d, payloadsRecieved = %d\n", req.Me, req.Peer, len(req.Payloads), len(payloads))
 }
 
 func (routes *SignalingApi) readHandler(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +116,9 @@ func (routes *SignalingApi) readHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	messages := routes.mailbox.ReadAll(req.Me)
+	payloads := routes.mailbox.ReadAll(req.Me)
 
-	writeResponse(w, http.StatusOK, responseDTO{Payloads: messages})
+	writeResponse(w, http.StatusOK, responseDTO{Payloads: payloads})
+
+	// fmt.Printf("READ from = %s, payloadsRecieved = %d\n", req.Me, len(payloads))
 }

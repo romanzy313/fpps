@@ -1,11 +1,5 @@
-import {
-  P2PSignalingPayload,
-  parseApiSignalingResponse,
-  serializeApiSignalingMessageRequest,
-  serializeApiSignalingPollRequest,
-} from "./api";
-import { config } from "../../config";
 import { RoomParams } from "../../utils/roomParams";
+import { apiRead, apiSend, SignalingPayload } from "./api";
 
 const POLL_INTERVAL_MS = 3000; // Poll every second
 const NON_INITIATOR_WAIT_MS = 5000; // Wait 5 seconds before first poll if not initiator
@@ -13,13 +7,13 @@ const NON_INITIATOR_WAIT_MS = 5000; // Wait 5 seconds before first poll if not i
 export class SignalingApi {
   private isOn = false;
   private pollTimeout: NodeJS.Timeout | null = null;
-  private sendQueue: P2PSignalingPayload[] = [];
+  private sendQueue: SignalingPayload[] = [];
   private isFetching = false;
   private fetchQueue: (() => Promise<void>)[] = [];
 
   constructor(
     private readonly roomParams: RoomParams,
-    private callback: (message: P2PSignalingPayload) => void,
+    private callback: (message: SignalingPayload) => void,
   ) {}
 
   start() {
@@ -50,7 +44,7 @@ export class SignalingApi {
     this.fetchQueue = [];
   }
 
-  send(signal: P2PSignalingPayload) {
+  send(signal: SignalingPayload) {
     if (!this.isOn) return;
     this.sendQueue.push(signal);
 
@@ -113,7 +107,7 @@ export class SignalingApi {
     if (!this.isOn) return;
 
     try {
-      let messages: P2PSignalingPayload[] = [];
+      let messages: SignalingPayload[] = [];
 
       if (this.sendQueue.length > 0) {
         // Send queued signals and get response
@@ -144,73 +138,19 @@ export class SignalingApi {
     }
   }
 
-  private async pollApi(): Promise<P2PSignalingPayload[]> {
-    // console.log("API polling payloads", {
-    //   myId: this.roomParams.myId,
-    // });
-
-    const payload = serializeApiSignalingPollRequest({
+  private pollApi(): Promise<SignalingPayload[]> {
+    return apiRead({
       myId: this.roomParams.myId,
+      secret: this.roomParams.secret,
     });
-
-    const response = await fetch(`/api/signaling`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: payload,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to call poll API: ${response.statusText}`);
-    }
-
-    const json = await response.json();
-    const result = parseApiSignalingResponse(json, this.roomParams.secret);
-
-    // console.log("API polling received payloads", {
-    //   myId: this.roomParams.myId,
-    //   count: result.length,
-    // });
-
-    return result;
   }
 
-  private async sendApi(
-    signals: P2PSignalingPayload[],
-  ): Promise<P2PSignalingPayload[]> {
-    // console.log("API sending payloads", {
-    //   myId: this.roomParams.myId,
-    //   count: signals.length,
-    // });
-
-    const payload = serializeApiSignalingMessageRequest({
+  private sendApi(signals: SignalingPayload[]): Promise<SignalingPayload[]> {
+    return apiSend({
       myId: this.roomParams.myId,
       peerId: this.roomParams.peerId,
       secret: this.roomParams.secret,
       payloads: signals,
     });
-
-    const response = await fetch(`/api/signaling`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: payload,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to call signal API: ${response.statusText}`);
-    }
-
-    const json = await response.json();
-    const result = parseApiSignalingResponse(json, this.roomParams.secret);
-
-    // console.log("API sending received payloads", {
-    //   myId: this.roomParams.myId,
-    //   count: result.length,
-    // });
-
-    return result;
   }
 }

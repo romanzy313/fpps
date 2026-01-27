@@ -8,6 +8,7 @@
     "checkJs": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "lib": ["DOM"],
 
     /* Preact Config */
     "jsx": "react-jsx",
@@ -16,7 +17,7 @@
     "paths": {
       "react": ["./node_modules/preact/compat/"],
       "react-dom": ["./node_modules/preact/compat/"],
-      // "~/*": ["./src/*"]
+      "~/*": ["./web/*"],
     },
     // "baseUrl": "./src"
   },
