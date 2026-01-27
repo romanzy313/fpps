@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "vite --mode development --host",
     "dev:test": "vitest",
-    "build": "vite build",
+    "build:web": "vite build",
     "test": "vitest --run --coverage",
     "preview": "vite preview",
-    "lint": "eslint"
+    "lint": "eslint",
+    "run:server": "go run main.go",
+    "build:server": "go build -o ./bin/server main.go"
   },
   "author": "Roman Volovoy",
   "license": "AGPL-3.0",
