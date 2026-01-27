@@ -13,24 +13,24 @@ type Validatable interface {
 }
 
 type sendDTO struct {
-	From     string   `json:"from"`
-	To       string   `json:"to"`
+	Me       string   `json:"me"`
+	Peer     string   `json:"peer"`
 	Payloads []string `json:"payloads"`
 }
 
 func (d sendDTO) Validate() error {
-	if d.To == "" || d.From == "" || len(d.Payloads) == 0 {
-		return errors.New("invalid data")
+	if d.Peer == "" || d.Me == "" || len(d.Payloads) == 0 {
+		return errors.New("malformed values")
 	}
 	return nil
 }
 
 type readDTO struct {
-	For string `json:"for"`
+	Me string `json:"me"`
 }
 
 func (d readDTO) Validate() error {
-	if d.For == "" {
+	if d.Me == "" {
 		return errors.New("invalid data")
 	}
 	return nil
@@ -92,7 +92,7 @@ func (routes *SignalingApi) sendHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := routes.mailbox.Push(req.To, req.Payloads); err != nil {
+	if err := routes.mailbox.Push(req.Peer, req.Payloads); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -112,7 +112,7 @@ func (routes *SignalingApi) readHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	messages := routes.mailbox.ReadAll(req.For)
+	messages := routes.mailbox.ReadAll(req.Me)
 
 	writeResponse(w, http.StatusOK, responseDTO{Payloads: messages})
 }

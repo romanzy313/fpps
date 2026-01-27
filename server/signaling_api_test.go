@@ -34,7 +34,7 @@ func TestSmoke(t *testing.T) {
 	mailbox := NewMailbox(10, time.Second*30)
 	signalingApi := SignalingApi{mailbox: mailbox}
 
-	w := doRead(signalingApi, `{"for":"user1"}`)
+	w := doRead(signalingApi, `{"me":"user1"}`)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("StatusCode = %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
@@ -52,14 +52,14 @@ func TestSendAndRead(t *testing.T) {
 	signalingApi := SignalingApi{mailbox: mailbox}
 
 	{
-		w := doSend(signalingApi, `{"from":"user1","to":"user2","payloads":["msg1","msg2"]}`)
+		w := doSend(signalingApi, `{"me":"user1","peer":"user2","payloads":["msg1","msg2"]}`)
 		if w.Code != http.StatusOK {
 			t.Errorf("StatusCode = %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
 		}
 	}
 
 	{
-		w := doRead(signalingApi, `{"for":"user2"}`)
+		w := doRead(signalingApi, `{"me":"user2"}`)
 
 		want := `{"payloads":["msg1","msg2"]}`
 		got := strings.TrimSpace(w.Body.String())
@@ -69,7 +69,7 @@ func TestSendAndRead(t *testing.T) {
 	}
 
 	{
-		w := doRead(signalingApi, `{"for":"user2"}`)
+		w := doRead(signalingApi, `{"me":"user2"}`)
 
 		want := `{"payloads":[]}`
 		got := strings.TrimSpace(w.Body.String())
