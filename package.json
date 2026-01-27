@@ -9,8 +9,9 @@
     "test": "vitest --run --coverage",
     "preview": "vite preview",
     "lint": "eslint",
-    "run:server": "go run main.go",
-    "build:server": "go build -o ./bin/server main.go"
+    "server:run": "go run main.go",
+    "server:build": "go build -o ./bin/server main.go",
+    "server:test": "go test ./..."
   },
   "author": "Roman Volovoy",
   "license": "AGPL-3.0",
