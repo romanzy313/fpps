@@ -1,13 +1,11 @@
 import "./style.css";
 import { useState } from "preact/hooks";
-import { apiHealth } from "../../api";
 import { config } from "../../config";
 import { secureId } from "../../utils/secureId";
 import { useLocation } from "preact-iso";
 import { isValidRoomHash, stringifyRoomParams } from "../../utils/roomParams";
 
 export function Home() {
-  const [health, setHealth] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const { route } = useLocation();
 
@@ -31,44 +29,6 @@ export function Home() {
       {/*<script src="/steamsaver/StreamSaver.js"></script>
       <script src="/streamsaver/sw.js"></script>*/}
       <h1>Home Page</h1>
-      <button
-        onClick={async () => {
-          const [value, error] = await apiHealth();
-
-          if (error) {
-            setError(error);
-            setHealth(false);
-          } else {
-            setError("");
-            setHealth(value);
-          }
-          // const { value, error } = await apiHealth();
-
-          // if (value === true) {
-          //   //
-          // }
-
-          // if (error) {
-          //   setError(error.message);
-          //   setHealth(false);
-          // } else {
-          //   setError("");
-          //   setHealth(value);
-          // }
-        }}
-      >
-        Check health ({config.apiUrl})
-      </button>
-      <div>
-        ApiServer status:{" "}
-        {health === null ? (
-          "Unknown"
-        ) : health ? (
-          "OK"
-        ) : (
-          <span className="error">{error ?? "Some error..."}</span>
-        )}
-      </div>
 
       <div style={{ height: "100px" }}></div>
       <div>

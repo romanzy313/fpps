@@ -3,7 +3,7 @@ import {
   parseApiSignalingResponse,
   serializeApiSignalingMessageRequest,
   serializeApiSignalingPollRequest,
-} from "@fpps/common";
+} from "./api";
 import { config } from "../../config";
 import { RoomParams } from "../../utils/roomParams";
 
@@ -153,7 +153,7 @@ export class SignalingApi {
       myId: this.roomParams.myId,
     });
 
-    const response = await fetch(`${config.apiUrl}/api/signaling`, {
+    const response = await fetch(`/api/signaling`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -191,7 +191,7 @@ export class SignalingApi {
       payloads: signals,
     });
 
-    const response = await fetch(`${config.apiUrl}/api/signaling`, {
+    const response = await fetch(`/api/signaling`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -2,8 +2,15 @@
 
 A peer-to-peer file sharing application. Supports two-way uploads using a concept of "rooms".
 
+## Getting Started
 
-# Technologies
+-   `pnpm dev` - Starts a dev server at http://localhost:5173/
+
+-   `pnpm build` - Builds for production, emitting to `dist/`. Prerenders all found routes in app to static HTML
+
+-   `pnpm preview` - Starts a server at http://localhost:4173/ to test production build locally
+
+## Technologies
 
 - WebRPC: peer-to-peer communication
 - Preact frontend for a slim SPA experience
