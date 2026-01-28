@@ -1,8 +1,8 @@
-import { P2PSignalingPayload } from "@fpps/common";
 import { RoomParams } from "../../utils/roomParams";
 import { PeerChannel, PeerMessage, TransferProtocol } from "../PeerChannel";
 import { SignalingApi } from "./SignalingApi";
 import { MultiSubscriber } from "../../utils/MultiSubscriber";
+import { SignalingPayload } from "./api";
 
 const PING_TIMEOUT = 10_000;
 const PING_INTERVAL = 5_000;
@@ -324,7 +324,7 @@ export class WebRTCPeerChannelManager {
     };
   }
 
-  private async handleSignalingMessage(payload: P2PSignalingPayload) {
+  private async handleSignalingMessage(payload: SignalingPayload) {
     try {
       switch (payload.type) {
         case "offer":

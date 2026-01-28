@@ -31,6 +31,11 @@ export function parseRoomParams(hash: string) {
 
   for (const part of parts) {
     const [key, partValue] = part.split(":");
+
+    if (!partValue) {
+      throw new Error("No value for key " + key);
+    }
+
     switch (key) {
       case "p":
         value.peerId = partValue;
