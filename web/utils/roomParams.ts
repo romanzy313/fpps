@@ -32,7 +32,7 @@ export function parseRoomParams(hash: string) {
   for (const part of parts) {
     const [key, partValue] = part.split(":");
 
-    if (!partValue) {
+    if (partValue === undefined) {
       throw new Error("No value for key " + key);
     }
 
