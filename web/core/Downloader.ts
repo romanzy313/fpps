@@ -104,6 +104,10 @@ export class Downloader {
   private onData(message: PeerMessage) {
     // console.log("NEW MESSAGE", message);
     switch (message.type) {
+      case "transfer-start":
+      case "preview-stats":
+        // no-op
+        break;
       case "transfer-started":
         this.status.setValue("transfer");
         break;
@@ -153,11 +157,7 @@ export class Downloader {
         // });
         this.stats = message.value;
         break;
-      case "transfer-start":
-      case "preview-stats":
-      case "ping":
-        // no-op
-        break;
+
       case "transfer-abort":
         if (this.status.value === "transfer") {
           this.internalAbort();

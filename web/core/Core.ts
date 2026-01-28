@@ -96,7 +96,11 @@ export class Core {
           }
         },
         onError: (error) => {
-          console.error("WRAPPED ERROR", { error });
+          if (isRTCUserAbortError(error)) {
+            // do nothing
+          } else {
+            console.error("WRAPPED ERROR", { error });
+          }
         },
       },
     );
@@ -187,4 +191,11 @@ export class Core {
       },
     });
   }
+}
+
+function isRTCUserAbortError(error: Error) {
+  return (
+    error.name === "OperationError" &&
+    error.message.includes("User-Initiated Abort")
+  );
 }

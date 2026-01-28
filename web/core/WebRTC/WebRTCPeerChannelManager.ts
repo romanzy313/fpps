@@ -4,8 +4,6 @@ import { SignalingApi } from "./SignalingApi";
 import { MultiSubscriber } from "../../utils/MultiSubscriber";
 import { SignalingPayload } from "./api";
 
-const PING_TIMEOUT = 10_000;
-const PING_INTERVAL = 5_000;
 const BACKPRESSURE_THRESHOLD = 1 << 20; // 1 Mb
 // const BACKPRESSURE_THRESHOLD = 1 << 15; // 32kb
 
@@ -96,20 +94,11 @@ export class WebRTCPeerChannelManager {
       console.error("WHAT WAS ATTEMPTED TO SEND", data);
       throw new Error("Cannot send: data channel is not open");
     }
-    // if (
-    //   this.dataChannel.bufferedAmount >
-    //   this.dataChannel.bufferedAmountLowThreshold
-    // ) {
-    //   this._hasBackpressure = true;
-    // }
-
     const encoded = TransferProtocol.encode(data);
 
     const arrayBuffer = encoded.buffer;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.dataChannel.send(arrayBuffer as any);
-
-    this.resetMyPing();
   }
 
   get _hasBackpressure() {
@@ -150,26 +139,6 @@ export class WebRTCPeerChannelManager {
       clearTimeout(this.peerPingTimeout);
       this.peerPingTimeout = null;
     }
-  }
-
-  private resetMyPing() {
-    if (this.myPingInterval) {
-      clearInterval(this.myPingInterval);
-    }
-    this.myPingInterval = setInterval(() => {
-      if (this._canSend()) {
-        this._send({ type: "ping" });
-      }
-    }, PING_INTERVAL);
-  }
-
-  private recievedMessage() {
-    if (this.peerPingTimeout) {
-      clearTimeout(this.peerPingTimeout);
-    }
-    this.peerPingTimeout = setTimeout(() => {
-      console.error("PING TIMED OUT, will implement reconnecting (TODO)");
-    }, PING_TIMEOUT);
   }
 
   private get signalingApiMust() {
@@ -291,17 +260,12 @@ export class WebRTCPeerChannelManager {
     this.dataChannel.onopen = () => {
       console.log("Data channel opened");
       this.callbacks.onConnectionStateChange("connected");
-
-      this.resetMyPing();
-      // send ping right away
-      this._send({ type: "ping" });
     };
 
     this.dataChannel.onmessage = (event) => {
       // convert to Uint8Array
       const uint8Array = new Uint8Array(event.data);
 
-      this.recievedMessage();
       const decoded = TransferProtocol.decode(uint8Array);
       this._messageSubscribers.notifyListeners(decoded);
     };
@@ -312,14 +276,11 @@ export class WebRTCPeerChannelManager {
     };
 
     this.dataChannel.onerror = (event) => {
-      // TODO: handle
-      console.error("WEBRTC Data channel error event!!! :", event);
-
       this.callbacks.onError(event.error);
     };
 
     this.dataChannel.onclose = () => {
-      // if this was intentional, then close. Otherwise try to connect
+      // TODO: will always start to reconnect
       console.log("Data channel closed");
     };
   }

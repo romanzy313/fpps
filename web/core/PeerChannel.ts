@@ -36,7 +36,6 @@ export type PreviewFileStats = {
 };
 
 export type PeerMessage =
-  | { type: "ping" }
   | { type: "transfer-started" }
   | { type: "transfer-start" }
   | { type: "transfer-next-file"; name: string }
@@ -53,8 +52,6 @@ export class TransferProtocol {
     }
 
     switch (message.type) {
-      case "ping":
-        return new TextEncoder().encode("00");
       case "transfer-start":
         return new TextEncoder().encode("t0");
       case "transfer-started":
@@ -108,8 +105,6 @@ export class TransferProtocol {
     }
 
     switch (type) {
-      case "00":
-        return { type: "ping" };
       case "t0":
         return { type: "transfer-start" };
       case "t1":

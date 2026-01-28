@@ -2,15 +2,13 @@ import { useCallback, useEffect, useState } from "preact/hooks";
 import { stringifyRoomParams } from "../utils/roomParams";
 
 import { useRoomParams2 } from "./useRoomParams";
-import { Core, emptyPeerFiles, FileItem, FullFilesState } from "../core/Core";
+import { Core, emptyPeerFiles, FullFilesState } from "../core/Core";
 import { PeerConnectionStatus } from "../core/WebRTC/WebRTCPeerChannelManager";
 import {
   TransferStats,
   TransferStatus,
   zeroTransferStats,
 } from "../core/PeerChannel";
-
-import { config } from "../config";
 
 const STATS_UPDATE_INTERVAL_MS = 500;
 

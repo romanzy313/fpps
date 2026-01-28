@@ -17,17 +17,17 @@ describe("TestPeerChannels", () => {
     const peerA = testChannels.getPeerChannel("a");
 
     peerA.sendMessage({
-      type: "ping",
+      type: "transfer-done",
     });
 
     vi.waitFor(() => {
       expect(testChannels.getReceivedMessages("b").length).toBe(1);
       expect(testChannels.getReceivedMessages("b")[0]).toStrictEqual({
-        type: "ping",
+        type: "transfer-done",
       });
       expect(testChannels.getSentMessages("a").length).toBe(1);
       expect(testChannels.getSentMessages("a")[0]).toStrictEqual({
-        type: "ping",
+        type: "transfer-done",
       });
     });
   });
