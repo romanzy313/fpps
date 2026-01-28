@@ -48,6 +48,9 @@ importers:
       '@types/streamsaver':
         specifier: ^2.0.5
         version: 2.0.5
+      '@vitejs/plugin-basic-ssl':
+        specifier: ^2.1.4
+        version: 2.1.4(vite@7.2.4(@types/node@25.0.10)(jiti@2.6.1))
       '@vitest/coverage-v8':
         specifier: 4.0.14
         version: 4.0.14(vitest@4.0.14(@types/node@25.0.10)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@27.2.0))
@@ -1170,6 +1173,12 @@ packages:
   '@typescript-eslint/visitor-keys@8.47.0':
     resolution: {integrity: sha512-SIV3/6eftCy1bNzCQoPmbWsRLujS8t5iDIZ4spZOBHqrM+yfX2ogg8Tt3PDTAVKw3sSCiUgg30uOAvK2r9zGjQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@vitejs/plugin-basic-ssl@2.1.4':
+    resolution: {integrity: sha512-HXciTXN/sDBYWgeAD4V4s0DN0g72x5mlxQhHxtYu3Tt8BLa6MzcJZUyDVFCdtjNs3bfENVHVzOsmooTVuNgAAw==}
+    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
+    peerDependencies:
+      vite: ^6.0.0 || ^7.0.0
 
   '@vitest/coverage-v8@4.0.14':
     resolution: {integrity: sha512-EYHLqN/BY6b47qHH7gtMxAg++saoGmsjWmAq9MlXxAz4M0NcHh9iOyKhBZyU4yxZqOd8Xnqp80/5saeitz4Cng==}
@@ -3719,6 +3728,10 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.47.0
       eslint-visitor-keys: 4.2.1
+
+  '@vitejs/plugin-basic-ssl@2.1.4(vite@7.2.4(@types/node@25.0.10)(jiti@2.6.1))':
+    dependencies:
+      vite: 7.2.4(@types/node@25.0.10)(jiti@2.6.1)
 
   '@vitest/coverage-v8@4.0.14(vitest@4.0.14(@types/node@22.19.1)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@27.2.0))':
     dependencies:

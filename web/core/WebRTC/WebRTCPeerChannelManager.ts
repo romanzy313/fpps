@@ -69,10 +69,13 @@ export class WebRTCPeerChannelManager {
     this.init();
 
     if (this.options.roomParams.isInitiator) {
-      this.dataChannel = this.pc!.createDataChannel("data", {
-        ordered: true, // Ensure ordered delivery
-        maxRetransmits: undefined, // Reliable delivery
-      });
+      this.dataChannel = this.pc!.createDataChannel(
+        "data-please-work-chromium",
+        {
+          ordered: true, // Ensure ordered delivery
+          maxRetransmits: undefined, // Reliable delivery
+        },
+      );
       this.setupDataChannel();
 
       const offer = await this.pc!.createOffer();
@@ -90,30 +93,30 @@ export class WebRTCPeerChannelManager {
   }
 
   _send(data: PeerMessage) {
-    if (!this.dataChannel || this.dataChannel.readyState !== "open") {
-      console.error("WHAT WAS ATTEMPTED TO SEND", data);
+    console.log("Will send", {
+      readyState: this.dataChannel?.readyState,
+      bufferedAmount: this.dataChannel?.bufferedAmount,
+      data,
+    });
+    if (!this._canSend()) {
+      console.error("WHAT WAS ATTEMPTED TO SEND", {
+        data,
+        dataChannel: this.dataChannel,
+      });
       throw new Error("Cannot send: data channel is not open");
     }
     const encoded = TransferProtocol.encode(data);
 
     const arrayBuffer = encoded.buffer;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.dataChannel.send(arrayBuffer as any);
+    this.dataChannel!.send(arrayBuffer as any);
   }
 
-  get _hasBackpressure() {
+  _backpressureRemainingBytes(): number {
     if (!this.dataChannel) {
       throw new Error("Cannot check backpressure: data channel is not open");
     }
-    const hasBackpressure =
-      this.dataChannel.bufferedAmount >
-      this.dataChannel.bufferedAmountLowThreshold;
-
-    if (hasBackpressure) {
-      console.warn("Backpressure encountered");
-    }
-
-    return hasBackpressure;
+    return BACKPRESSURE_THRESHOLD - this.dataChannel.bufferedAmount;
   }
 
   _canSend(): boolean {
@@ -255,8 +258,7 @@ export class WebRTCPeerChannelManager {
       throw new Error("Data channel not initialized");
     }
     this.dataChannel.binaryType = "arraybuffer";
-    this.dataChannel.bufferedAmountLowThreshold = BACKPRESSURE_THRESHOLD; // 32 KiB as example threshold
-
+    this.dataChannel.bufferedAmountLowThreshold = BACKPRESSURE_THRESHOLD;
     this.dataChannel.onopen = () => {
       console.log("Data channel opened");
       this.callbacks.onConnectionStateChange("connected");
@@ -340,8 +342,8 @@ export class WebRTCPeerChannel implements PeerChannel {
   isReady(): boolean {
     return this.manager._canSend();
   }
-  hasBackpressure(): boolean {
-    return this.manager._hasBackpressure;
+  backpressureRemainingBytes(): number {
+    return this.manager._backpressureRemainingBytes();
   }
   sendMessage(message: PeerMessage): void {
     this.manager._send(message);

@@ -1,6 +1,6 @@
 export interface PeerChannelSender {
   isReady(): boolean;
-  hasBackpressure(): boolean;
+  backpressureRemainingBytes(): number;
   sendMessage(message: PeerMessage): void;
   listenOnDrained(cb: () => void): void; // TODO: return unsub function
 }
@@ -18,7 +18,6 @@ export type TransferStats = {
   totalFiles: number;
   transferredBytes: number;
   totalBytes: number;
-  // speed can be here
 };
 
 export function zeroTransferStats(): TransferStats {

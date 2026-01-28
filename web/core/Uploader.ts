@@ -7,8 +7,9 @@ import {
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 
 export class Uploader {
-  // config vars
   private WRITE_CHUNK_SIZE = 1 << 15; // 32kb
+  private BACKOFF_BACKPRESSURE_REMAINING = this.WRITE_CHUNK_SIZE * 2;
+
   // TODO: send the progress every 0.5 seconds!
   private PROGRESS_EVERY_BYTES = (1 << 13) * 16; // 8 * 16kb
 
@@ -22,6 +23,9 @@ export class Uploader {
 
   constructor(private peerChannel: PeerChannel) {
     peerChannel.listenOnMessage(this.onData.bind(this));
+    peerChannel.listenOnDrained(() => {
+      console.warn("DRAINED");
+    });
   }
 
   // TODO: for some reason this does not count duplicate file bytes
@@ -104,6 +108,24 @@ export class Uploader {
     this.status.setValue("done");
   }
 
+  private hasBackpressure() {
+    const remaining = this.peerChannel.backpressureRemainingBytes();
+
+    const underBackpressure = remaining < this.BACKOFF_BACKPRESSURE_REMAINING;
+
+    if (underBackpressure) {
+      console.log(
+        "has backpressure? ",
+        underBackpressure,
+        "remaining",
+        remaining,
+        "BACKOFF",
+        this.BACKOFF_BACKPRESSURE_REMAINING,
+      );
+    }
+    return underBackpressure;
+  }
+
   private async start() {
     if (!this.peerChannel.isReady()) {
       throw new Error("Peer channel is not ready to upload");
@@ -137,6 +159,7 @@ export class Uploader {
     const firstFile = this.files[0]!;
     let reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>> = firstFile
       .stream()
+      .pipeThrough(new TransformStream(new ChunkSplitterTransformer(65536)))
       .getReader();
 
     this.peerChannel.sendMessage({
@@ -149,12 +172,11 @@ export class Uploader {
         return;
       }
 
-      if (this.peerChannel.hasBackpressure()) {
+      if (this.hasBackpressure()) {
         await sleep(10);
         continue;
       }
 
-      // TODO: this could fail?
       const { value, done } = await reader.read();
 
       // console.log("READING A FILE", {
@@ -178,7 +200,11 @@ export class Uploader {
         }
 
         const nextFile = this.files[this.currentFileIndex]!;
-        reader = nextFile.stream().getReader();
+        reader = nextFile
+          .stream()
+          .pipeThrough(new TransformStream(new ChunkSplitterTransformer(65536)))
+          .getReader();
+
         // send the next file message
         this.peerChannel.sendMessage({
           type: "transfer-next-file",
@@ -202,6 +228,10 @@ export class Uploader {
       }
 
       this.totalProcessedBytes += value.byteLength;
+      console.log("SENDING CHUNK OF SIZE", value.byteLength);
+
+      // TODO: the chunks in chrome are very large, the size of the file...
+
       this.sendBufferedChunk(value);
     }
   }
@@ -240,4 +270,38 @@ export class Uploader {
 
 function sleep(ms: number) {
   return new Promise((res) => setTimeout(res, ms));
+}
+
+class ChunkSplitterTransformer {
+  constructor(chunkSize = 65536) {
+    // 64KB default
+    this.chunkSize = chunkSize;
+    this.buffer = new Uint8Array(0);
+  }
+
+  transform(chunk: any, controller: any) {
+    // Combine buffer with new chunk
+    const combined = new Uint8Array(this.buffer.length + chunk.length);
+    combined.set(this.buffer, 0);
+    combined.set(new Uint8Array(chunk), this.buffer.length);
+
+    // Split into chunkSize pieces
+    let offset = 0;
+    while (offset + this.chunkSize <= combined.length) {
+      const slice = combined.slice(offset, offset + this.chunkSize);
+      controller.enqueue(slice);
+      offset += this.chunkSize;
+    }
+
+    // Keep remaining data in buffer
+    this.buffer = combined.slice(offset);
+  }
+
+  flush(controller) {
+    // Send any remaining data
+    if (this.buffer.length > 0) {
+      controller.enqueue(this.buffer);
+      this.buffer = new Uint8Array(0);
+    }
+  }
 }

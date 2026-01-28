@@ -1,4 +1,7 @@
-import { PeerChannel, PeerMessage } from "./PeerChannel";
+import { PeerChannel, PeerMessage, TransferProtocol } from "./PeerChannel";
+
+const maxPendingBytes = (1 << 15) * 3; // 32kb * 3
+const drainMs = 5;
 
 class TestPeerChannel implements PeerChannel {
   constructor(
@@ -6,7 +9,8 @@ class TestPeerChannel implements PeerChannel {
     private index: number,
   ) {}
 
-  _underBackpressure = false;
+  _prendingBytes = maxPendingBytes;
+
   _onDataCallback: ((message: PeerMessage) => void) | null = null;
   _onDrainedCallback: (() => void) | null = null;
   _receivedMessages: PeerMessage[] = [];
@@ -16,17 +20,24 @@ class TestPeerChannel implements PeerChannel {
     return true;
   }
 
-  hasBackpressure(): boolean {
-    return this._underBackpressure;
+  backpressureRemainingBytes(): number {
+    return this._prendingBytes;
   }
 
   sendMessage(message: PeerMessage): void {
-    // console.log("SENDING A MESSAGE", {
-    //   index: this.index,
-    //   message,
-    // });
+    const size = TransferProtocol.encode(message).byteLength;
+    this._prendingBytes -= size;
+
+    if (this._prendingBytes < 0) {
+      throw new Error("buckled under backpressure");
+    }
+
     this._sendMessages.push(message);
     this.parent.peerSent(this.index, message);
+
+    setTimeout(() => {
+      this._prendingBytes += size;
+    }, drainMs);
   }
 
   listenOnDrained(cb: () => void): void {
@@ -42,7 +53,6 @@ export class TestPeerChannels {
   private peers: [TestPeerChannel, TestPeerChannel];
 
   private latencyMs: number = 16.6;
-  private backpressureMs: number = 20;
 
   constructor(private backpressureChance: number) {
     this.peers = [new TestPeerChannel(this, 0), new TestPeerChannel(this, 1)];
@@ -74,21 +84,21 @@ export class TestPeerChannels {
       }
     }, this.latencyMs);
 
-    const thisPeer = this.peers[index]!;
+    // const thisPeer = this.peers[index]!;
 
-    if (
-      !thisPeer._underBackpressure &&
-      Math.random() < this.backpressureChance
-    ) {
-      console.log("RANDOM BACKPRESSURE");
-      const thisPeer = this.peers[index]!;
-      thisPeer._underBackpressure = true;
-      setTimeout(() => {
-        thisPeer._underBackpressure = false;
-        if (thisPeer._onDrainedCallback) {
-          thisPeer._onDrainedCallback();
-        }
-      }, this.backpressureMs);
-    }
+    // if (
+    //   !thisPeer._underBackpressure &&
+    //   Math.random() < this.backpressureChance
+    // ) {
+    //   console.log("RANDOM BACKPRESSURE");
+    //   const thisPeer = this.peers[index]!;
+    //   thisPeer._underBackpressure = true;
+    //   setTimeout(() => {
+    //     thisPeer._underBackpressure = false;
+    //     if (thisPeer._onDrainedCallback) {
+    //       thisPeer._onDrainedCallback();
+    //     }
+    //   }, this.backpressureMs);
+    // }
   }
 }

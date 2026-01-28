@@ -33,6 +33,7 @@
     "@preact/preset-vite": "^2.10.2",
     "@types/node": "^25.0.10",
     "@types/streamsaver": "^2.0.5",
+    "@vitejs/plugin-basic-ssl": "^2.1.4",
     "@vitest/coverage-v8": "4.0.14",
     "baseline-browser-mapping": "^2.9.18",
     "eslint": "^9.39.1",

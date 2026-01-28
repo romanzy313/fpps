@@ -252,7 +252,6 @@ describe("Uploader", { timeout: 10_000 }, () => {
 
     await vi.waitUntil(
       () => {
-        console.log("WAIT VALUE", uploader.status.value);
         return uploader.status.value === "transfer";
       },
       {
