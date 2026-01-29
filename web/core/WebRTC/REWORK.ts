@@ -10,9 +10,11 @@ interface BackpressureWriter {
   onError: ((error: Error) => void) | null;
 }
 
-import Peer from "simple-peer";
+// import Peer from "simple-peer";
+import Peer from "peer-lite";
 import { PeerMessage, TransferProtocol } from "../PeerChannel";
 import { MultiSubscriber } from "../../utils/MultiSubscriber";
+import { getIceServers } from "./iceServers";
 
 // use SSE instead!
 export interface Signaling {
@@ -21,73 +23,6 @@ export interface Signaling {
   onMessage(cb: (msg: string) => void): void;
   onError(cb: (err: Error) => void): void;
   send(msg: string): void;
-}
-
-function usingSimplePeer() {
-  const signaler: Signaling = null as any;
-  var peer = new Peer({
-    initiator: true,
-    channelConfig: {
-      ordered: true,
-      maxRetransmits: undefined,
-    },
-  });
-
-  signaler.start("MYID", "PEERID");
-
-  function anyError(err: Error) {
-    signaler.stop();
-    peer.end();
-  }
-
-  peer.on("error", (err) => {
-    // peer error
-  });
-  signaler.onError((err) => {});
-
-  signaler.onMessage((data) => {
-    const decoded = JSON.parse(data);
-    peer.signal(decoded);
-  });
-
-  peer.on("signal", (data) => {
-    // when peer1 has signaling data, give it to peer2 somehow
-    signaler.send(JSON.stringify(data));
-  });
-  peer.on("connect", () => {
-    signaler.stop();
-    // wait for 'connect' event before using the data channel
-
-    if (!peer.write("hello")) {
-      peer.once("drain", () => {});
-    }
-
-    peer.send("hey peer2, how is it going?");
-  });
-
-  peer.on("data", (data) => {
-    // got a data channel message
-    console.log("got a message from peer1: " + data);
-  });
-
-  function write(data: Uint8Array, onDrain: () => void) {
-    if (!peer.write(data)) {
-      peer.once("drain", onDrain);
-    }
-  }
-
-  return {
-    write,
-  };
-}
-
-async function pair() {
-  type bacd = {
-    pp: ReadableWritablePair;
-  };
-  const aaa: bacd = null as any;
-
-  await aaa.pp.writable.getWriter().write("asdasd");
 }
 
 function reworkSignaling() {
@@ -110,11 +45,23 @@ type ConnOpts = {
 // if first byte starts with "c" -> its a chunk
 // if with "{" -> its arbitrary json
 
+type UniversalSignal =
+  | {
+      type: "signal";
+      value: RTCSessionDescriptionInit;
+    }
+  | {
+      type: "candidate";
+      value: RTCIceCandidate;
+    };
+
 // this is destroyed on error!
 // connects right away
 export class BetterPeerChannel {
-  private peer: Peer.Instance | null = null;
+  private peer: Peer | null = null;
+  private dataChannel: RTCDataChannel | null = null;
   private _isReady = false; // I dont like this
+  private _destroyed = false;
   public onDrain: (() => void) | null = null;
   // value of permaError means that it is a permanent error, cannot be recovered
   // usually means that connection failed to be established due to privacy settings such as
@@ -133,6 +80,13 @@ export class BetterPeerChannel {
 
   start() {
     this.restart();
+
+    // setInterval(() => {
+    //   console.log("STATUS REPORT", {
+    //     status: this.peer?.status(),
+    //     readyState: this.dataChannel?.readyState,
+    //   });
+    // }, 3000);
   }
 
   private permanentError() {
@@ -143,7 +97,7 @@ export class BetterPeerChannel {
     this.destroy();
   }
 
-  private onRestarableError(err: Error) {
+  private handleError(err: Error) {
     if (this.onError) {
       this.onError(err);
     }
@@ -157,48 +111,28 @@ export class BetterPeerChannel {
     }
   }
 
-  private destroy() {
+  destroy() {
+    this._destroyed = true;
     this._isReady = false;
     this.signaler.stop();
-    if (this.peer) {
-      this.peer.destroy();
-      this.peer = null;
-    }
+
+    this.dataChannel?.close();
+    this.dataChannel = null;
+    this.peer?.destroy();
+    this.peer = null;
   }
 
-  private restart() {
-    if (this.onConnectionState) {
-      this.onConnectionState("connecting");
-    }
-
-    this.destroy();
-
-    this.peer = new Peer({
-      initiator: this.opts.isInitiator,
-      channelConfig: {
-        ordered: true,
-        maxRetransmits: undefined,
-      },
-    });
-    this.signaler.start(this.opts.myId, this.opts.peerId);
-
-    this.peer.on("error", (err) => {
-      this.onRestarableError(err);
-    });
-    this.signaler.onError((err) => {
-      this.onRestarableError(err);
+  private setupDataChannel() {
+    const dataChannel = this.peer!.getDataChannel("TEST")!;
+    console.log("PEER CHANNEL OPEN", {
+      dataChannel,
     });
 
-    this.signaler.onMessage((data) => {
-      const decoded = JSON.parse(data);
-      this.peer!.signal(decoded);
-    });
+    dataChannel.binaryType = "arraybuffer";
+    dataChannel.bufferedAmountLowThreshold = 1 << 20; // 1mb
 
-    this.peer.on("signal", (data) => {
-      // when peer1 has signaling data, give it to peer2 somehow
-      this.signaler.send(JSON.stringify(data));
-    });
-    this.peer.on("connect", () => {
+    dataChannel.addEventListener("open", () => {
+      console.log("DATACHANNEL OPENED");
       this._isReady = true;
       if (this.onConnectionState) {
         this.onConnectionState("connected");
@@ -207,17 +141,128 @@ export class BetterPeerChannel {
       this.signaler.stop();
     });
 
-    this.peer.on("data", (data) => {
+    dataChannel.addEventListener("close", () => {
+      console.error("DATACHANNEL CLOSED", {
+        dataChannel: dataChannel,
+      });
+
+      // FIXME: dont restart when close is desired
+      if (!this._destroyed) {
+        this.restart();
+      }
+    });
+    dataChannel.addEventListener("error", (ev) => {
+      console.error("DATACHANNEL ERROR", {
+        error: ev.error,
+      });
+
+      // is this correct?
+      // this.restart();
+    });
+
+    dataChannel.addEventListener("bufferedamountlow", () => {
+      console.log("BUFFERED AMOUNT LOW");
+      if (this.onDrain) {
+        this.onDrain();
+      }
+    });
+
+    this.dataChannel = dataChannel;
+  }
+
+  private restart() {
+    this.destroy();
+
+    this._destroyed = false; // hhh
+    if (this.onConnectionState) {
+      this.onConnectionState("connecting");
+    }
+
+    this.peer = new Peer({
+      enableDataChannels: true,
+      batchCandidates: false,
+      config: {
+        iceServers: getIceServers("Dev"),
+      },
+    });
+
+    this.signaler.start(this.opts.myId, this.opts.peerId);
+
+    this.peer.on("connected", () => {
+      console.log("PEER CONNECTED");
+
+      this.peer!.addDataChannel("TEST", {
+        ordered: true,
+        maxRetransmits: undefined,
+      });
+
+      this.setupDataChannel();
+    });
+
+    this.peer.on("disconnected", () => {
+      // TODO: careful!
+      console.log("PEER DISCONNECTED");
+    });
+
+    this.peer.on("error", (err) => {
+      this.handleError(new Error(err.message));
+    });
+    this.signaler.onError((err) => {
+      this.handleError(err);
+    });
+
+    this.signaler.onMessage((data) => {
+      const { type, value }: UniversalSignal = JSON.parse(data);
+
+      if (type === "signal") {
+        this.peer!.signal(value);
+      } else {
+        this.peer!.addIceCandidate(value);
+      }
+    });
+
+    this.peer.on("signal", (signal) => {
+      const universal: UniversalSignal = {
+        type: "signal",
+        value: signal,
+      };
+
+      this.signaler.send(JSON.stringify(universal));
+    });
+    this.peer.on("onicecandidates", (conds) => {
+      for (const cond of conds) {
+        const universal: UniversalSignal = {
+          type: "candidate",
+          value: cond,
+        };
+
+        this.signaler.send(JSON.stringify(universal));
+      }
+    });
+
+    // this.peer.on("channelOpen", ({ channel: dataChannel }) => {
+    //   if (dataChannel.label !== "TEST") {
+    //     return;
+    //   }
+
+    // });
+
+    this.peer.on("channelData", (ev) => {
+      if (ev.source !== "incoming") {
+        console.warn("WHY OUTGOING IS HERE?", { ev });
+      }
+
+      const data = new Uint8Array(ev.data as ArrayBuffer);
+
       const decoded = TransferProtocol.decode(data);
+
+      // console.log("RECIEVED A MESSAGE", { decoded, data, ev });
 
       this._messageSubscribers.notifyListeners(decoded);
     });
 
-    // OR this.peer.on("resume", () => {});
-    this.peer.on("drain", () => {
-      if (this.onDrain) {
-        this.onDrain();
-      }
+    this.peer.start({
+      polite: this.opts.isInitiator,
     });
   }
 
@@ -229,14 +274,40 @@ export class BetterPeerChannel {
     return this._isReady;
   }
 
-  get hasBackpressure(): boolean {
-    return this.peer!.writableNeedDrain;
+  get remaniningBackpressure(): number {
+    if (!this.dataChannel) {
+      throw new Error("Assertion failed: no dataChannel");
+    }
+
+    return (
+      this.dataChannel.bufferedAmountLowThreshold -
+      this.dataChannel.bufferedAmount
+    );
   }
 
-  // writing sends the payload, not the raw DATA!
+  get hasBackpressure(): boolean {
+    return this.remaniningBackpressure < 0;
+  }
+
+  // if true is returned, continue sending
+  // if false is returned, backpressure is encountered. Backoff until drain event
   write(msg: PeerMessage): boolean {
+    if (!this.dataChannel) {
+      throw new Error("Assertion failed: no dataChannel");
+    }
+
+    if (this.dataChannel.readyState !== "open") {
+      console.error("dataChannel", { dataChannel: this.dataChannel });
+      throw new Error("Assertion failed: dataChannel is not open");
+    }
+
     const encoded = TransferProtocol.encode(msg);
 
-    return this.peer!.write(encoded);
+    const resume = !this.hasBackpressure;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.dataChannel.send(encoded as any);
+
+    return resume;
   }
 }

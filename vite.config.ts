@@ -13,7 +13,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    basicSsl(),
+    // basicSsl(),
     preact({
       prerender: {
         enabled: true,

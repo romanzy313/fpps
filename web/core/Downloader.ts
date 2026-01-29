@@ -5,8 +5,8 @@ import {
   TransferStatus,
   zeroTransferStats,
 } from "./PeerChannel";
-import { PeerChannel } from "./PeerChannel";
 import { AsyncZipDeflate, Zip } from "fflate/browser";
+import { BetterPeerChannel } from "./WebRTC/REWORK";
 
 export class Downloader {
   status = new ValueSubscriber<TransferStatus>("idle");
@@ -15,8 +15,10 @@ export class Downloader {
   private zip: Zip | null = null;
   private deflate: AsyncZipDeflate | null = null;
 
-  constructor(private peerChannel: PeerChannel) {
-    peerChannel.listenOnMessage(this.onData.bind(this));
+  constructor(private peerChannel: BetterPeerChannel) {
+    peerChannel.listenOnMessage((msg) => {
+      this.onData(msg);
+    });
   }
 
   start(writableStream: WritableStream<Uint8Array>) {
@@ -37,7 +39,7 @@ export class Downloader {
 
     this.stats = zeroTransferStats();
     this.writer = writableStream.getWriter();
-    this.peerChannel.sendMessage({ type: "transfer-start" });
+    this.peerChannel.write({ type: "transfer-start" });
     this.zip = new Zip((err, data, done) => {
       // console.log("zip callback", { err, byteLen: data?.byteLength, done });
       if (!this.writer) {
@@ -74,7 +76,7 @@ export class Downloader {
   }
 
   async abort() {
-    this.peerChannel.sendMessage({ type: "transfer-abort" });
+    this.peerChannel.write({ type: "transfer-abort" });
     this.internalAbort();
   }
 

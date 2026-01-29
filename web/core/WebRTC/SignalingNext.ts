@@ -47,7 +47,10 @@ export class SignalingImpl implements Signaling {
   }
 
   send(data: string) {
-    if (!this.isOn) return;
+    if (!this.isOn) {
+      throw new Error("Tried to send when not on");
+    }
+
     this.sendQueue.push(data);
 
     // Trigger send immediately (don't wait for next poll interval)

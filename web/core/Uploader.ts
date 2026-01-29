@@ -23,7 +23,10 @@ export class Uploader {
   private lastStatSentBytes = 0;
 
   constructor(private peerChannel: BetterPeerChannel) {
-    peerChannel.listenOnMessage(this.onData.bind(this));
+    peerChannel.listenOnMessage((msg) => {
+      this.onData(msg);
+    });
+    // peerChannel.listenOnMessage(this.onData.bind(this));
     peerChannel.onDrain = () => {
       console.warn("UPLOADER DRAINED");
     };
@@ -227,7 +230,7 @@ export class Uploader {
       }
 
       this.totalProcessedBytes += value.byteLength;
-      console.log("SENDING CHUNK OF SIZE", value.byteLength);
+      // console.log("SENDING CHUNK OF SIZE", value.byteLength);
 
       // TODO: the chunks in chrome are very large, the size of the file...
 

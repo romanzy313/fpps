@@ -17,6 +17,9 @@ importers:
       json-or-binary:
         specifier: ^0.9.9
         version: 0.9.9
+      peer-lite:
+        specifier: ^2.0.2
+        version: 2.0.2
       preact:
         specifier: ^10.26.9
         version: 10.27.2
@@ -2269,6 +2272,9 @@ packages:
   pathval@2.0.1:
     resolution: {integrity: sha512-//nshmD55c46FuFw26xV/xFAaB5HF9Xdap7HJBBnrKdAd6/GxDBaNA1870O79+9ueg61cZLSVc+OaFlfmObYVQ==}
     engines: {node: '>= 14.16'}
+
+  peer-lite@2.0.2:
+    resolution: {integrity: sha512-/60abreInKdWz7XMDZbjqp5X9QCiwgI/Sf9rdXCyvu7Rgq4Xd3E/Kwrf8GnSybUIhE0QcYybrYwEZxFn6NYjIQ==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -5155,6 +5161,8 @@ snapshots:
   pathe@2.0.3: {}
 
   pathval@2.0.1: {}
+
+  peer-lite@2.0.2: {}
 
   picocolors@1.1.1: {}
 

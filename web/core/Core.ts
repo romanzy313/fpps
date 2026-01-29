@@ -40,8 +40,7 @@ export function emptyPeerFiles(): FullFilesState {
 
 // core implementation, like a room manager. Name TDB
 export class Core {
-  private peerManager: WebRTCPeerChannelManager;
-  private peerChannel: PeerChannel;
+  private betterPeerChannel: BetterPeerChannel;
   // this should be a signal?
   connectionState = new ValueSubscriber<PeerConnectionStatus>("disconnected");
 
@@ -93,47 +92,7 @@ export class Core {
         peerId: roomParams.peerId,
       },
     );
-    // betterPeerChannel.listenOnMessage((message) => {
-    //   switch (message.type) {
-    //     case "preview-stats":
-    //       this.peerFiles.totalCount = message.value.totalCount;
-    //       this.peerFiles.totalBytes = message.value.totalBytes;
-    //       this.filesReactor.notifyListeners();
-
-    //       break;
-    //   }
-    // });
-    betterPeerChannel.onConnectionState = (status) => {
-      this.connectionState.setValue(status as any); // TODO
-      if (status === "connected") {
-        this.sendPreviewStats();
-      }
-    };
-    this.uploader = new Uploader(betterPeerChannel);
-
-    // TODO: choose intelligently
-    const iceServers = getIceServers("Dev");
-
-    this.peerManager = new WebRTCPeerChannelManager(
-      { roomParams, iceServers },
-      {
-        onConnectionStateChange: (status) => {
-          this.connectionState.setValue(status);
-          if (status === "connected") {
-            this.sendPreviewStats();
-          }
-        },
-        onError: (error) => {
-          if (isRTCUserAbortError(error)) {
-            // do nothing
-          } else {
-            console.error("WRAPPED ERROR", { error });
-          }
-        },
-      },
-    );
-    this.peerChannel = this.peerManager.getPeerChannel();
-    this.peerChannel.listenOnMessage((message) => {
+    betterPeerChannel.listenOnMessage((message) => {
       switch (message.type) {
         case "preview-stats":
           this.peerFiles.totalCount = message.value.totalCount;
@@ -143,14 +102,22 @@ export class Core {
           break;
       }
     });
+    betterPeerChannel.onConnectionState = (status) => {
+      this.connectionState.setValue(status as any); // TODO
+      if (status === "connected") {
+        this.sendPreviewStats();
+      }
+    };
+    this.uploader = new Uploader(betterPeerChannel);
+    this.downloader = new Downloader(betterPeerChannel);
 
-    this.downloader = new Downloader(this.peerChannel);
+    betterPeerChannel.start();
 
-    this.peerManager.connect(); // connect right away?
+    this.betterPeerChannel = betterPeerChannel;
   }
 
   public dispose() {
-    this.peerManager.dispose(); // closes it
+    this.betterPeerChannel.destroy();
     this.filesReactor.dispose();
     this.connectionState.dispose();
     this.uploader.dispose();
@@ -173,7 +140,7 @@ export class Core {
 
     this.filesReactor.notifyListeners();
 
-    if (this.peerChannel.isReady()) {
+    if (this.betterPeerChannel.isReady()) {
       this.sendPreviewStats();
     }
   }
@@ -188,7 +155,7 @@ export class Core {
 
     this.filesReactor.notifyListeners();
 
-    if (this.peerChannel.isReady()) {
+    if (this.betterPeerChannel.isReady()) {
       this.sendPreviewStats();
     }
   }
@@ -210,7 +177,7 @@ export class Core {
   }
 
   private sendPreviewStats() {
-    this.peerChannel.sendMessage({
+    this.betterPeerChannel.write({
       type: "preview-stats",
       value: {
         totalCount: this.myFiles.totalCount,
