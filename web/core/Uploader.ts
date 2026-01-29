@@ -104,20 +104,20 @@ export class Uploader {
   }
 
   private done() {
-    if (this.progressInterval) {
-      clearInterval(this.progressInterval);
-    }
-
     this.flushTransferChunks();
+    this.peerChannel.write({ type: "transfer-done" });
+    this.status.setValue("done");
+
     this.peerChannel.write({
       type: "transfer-stats",
       value: this.getStats(),
     });
-    this.peerChannel.write({ type: "transfer-done" });
-    this.status.setValue("done");
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+    }
   }
 
-  private async startTransfer() {
+  private async transferStarted() {
     if (!this.peerChannel.isReady()) {
       throw new Error("Peer channel is not ready to upload");
     }
@@ -219,28 +219,33 @@ export class Uploader {
     }
   }
 
-  abort() {
+  stop() {
     this.peerChannel.write({ type: "transfer-abort" });
-    this.internalAbort();
+
+    this.transferAborted();
   }
 
-  private internalAbort() {
+  private transferAborted() {
     if (this.status.value !== "transfer") {
       throw new Error(
         "Cannot abort transfer: uploader is not in uploading state",
       );
     }
     this.status.setValue("aborted");
+
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+    }
   }
 
   private onData(message: PeerMessage) {
     switch (message.type) {
       case "transfer-start":
-        this.startTransfer();
+        this.transferStarted();
         break;
       case "transfer-abort":
         if (this.status.value === "transfer") {
-          this.internalAbort();
+          this.transferAborted();
         }
         break;
     }

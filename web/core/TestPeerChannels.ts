@@ -2,7 +2,7 @@ import { PeerMessage, TransferProtocol } from "./PeerChannel";
 import { IPeerChannel } from "./WebRTC/REWORK";
 
 const maxPendingBytes = 1 << 18; // 256kb
-const drainMs = 5;
+const drainMs = 50;
 
 class TestPeerChannel implements IPeerChannel {
   constructor(
@@ -11,7 +11,7 @@ class TestPeerChannel implements IPeerChannel {
   ) {}
 
   _ready = false;
-  _prendingBytes = maxPendingBytes;
+  _pendingBytes = maxPendingBytes;
 
   _onDataCallback: ((message: PeerMessage) => void) | null = null;
   _onDrainedCallback: (() => void) | null = null;
@@ -31,7 +31,7 @@ class TestPeerChannel implements IPeerChannel {
   }
 
   hasBackpressure(): boolean {
-    return this._prendingBytes < 0;
+    return this._pendingBytes < 0;
   }
 
   write(message: PeerMessage) {
@@ -40,20 +40,20 @@ class TestPeerChannel implements IPeerChannel {
     }
 
     const size = TransferProtocol.encode(message).byteLength;
-    this._prendingBytes -= size;
-
-    // if (this._prendingBytes < 0) {
-    //   throw new Error("buckled under backpressure");
-    // }
+    this._pendingBytes -= size;
 
     this._sendMessages.push(message);
     this.parent.peerSent(this.index, message);
 
     setTimeout(() => {
-      this._prendingBytes += size;
+      this._pendingBytes += size;
     }, drainMs);
 
     const resume = !this.hasBackpressure();
+
+    if (!resume) {
+      console.log("UNDER BACKPRESSURE");
+    }
 
     return resume;
   }

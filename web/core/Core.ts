@@ -184,7 +184,7 @@ export class Core {
     this.downloader.abort();
   }
   public abortUpload() {
-    this.uploader.abort();
+    this.uploader.stop();
   }
 
   private sendPreviewStats() {

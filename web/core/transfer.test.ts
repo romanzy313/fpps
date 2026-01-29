@@ -259,7 +259,7 @@ describe("Uploader", { timeout: 10_000 }, () => {
         interval: 1,
       },
     );
-    uploader.abort();
+    uploader.stop();
 
     await vi.waitUntil(() => uploader.status.value === "aborted");
     await vi.waitUntil(() => downloader.status.value === "aborted");
