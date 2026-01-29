@@ -1,5 +1,5 @@
 import { RoomParams } from "../../utils/roomParams";
-import { apiRead, apiSend, SignalingPayload } from "./api";
+import { apiRead, apiSend } from "./api";
 
 const POLL_INTERVAL_MS = 3000; // Poll every second
 const NON_INITIATOR_WAIT_MS = 5000; // Wait 5 seconds before first poll if not initiator
@@ -7,13 +7,13 @@ const NON_INITIATOR_WAIT_MS = 5000; // Wait 5 seconds before first poll if not i
 export class SignalingApi {
   private isOn = false;
   private pollTimeout: NodeJS.Timeout | null = null;
-  private sendQueue: SignalingPayload[] = [];
+  private sendQueue: string[] = [];
   private isFetching = false;
   private fetchQueue: (() => Promise<void>)[] = [];
 
   constructor(
     private readonly roomParams: RoomParams,
-    private callback: (message: SignalingPayload) => void,
+    private callback: (message: string) => void,
   ) {}
 
   start() {
@@ -44,7 +44,7 @@ export class SignalingApi {
     this.fetchQueue = [];
   }
 
-  send(signal: SignalingPayload) {
+  send(signal: string) {
     if (!this.isOn) return;
     this.sendQueue.push(signal);
 
@@ -107,7 +107,7 @@ export class SignalingApi {
     if (!this.isOn) return;
 
     try {
-      let messages: SignalingPayload[] = [];
+      let messages: string[] = [];
 
       if (this.sendQueue.length > 0) {
         // Send queued signals and get response
@@ -138,19 +138,21 @@ export class SignalingApi {
     }
   }
 
-  private pollApi(): Promise<SignalingPayload[]> {
-    return apiRead({
-      myId: this.roomParams.myId,
-      secret: this.roomParams.secret,
+  private async pollApi(): Promise<string[]> {
+    const res = await apiRead({
+      me: this.roomParams.myId,
     });
+
+    return res.payloads;
   }
 
-  private sendApi(signals: SignalingPayload[]): Promise<SignalingPayload[]> {
-    return apiSend({
-      myId: this.roomParams.myId,
-      peerId: this.roomParams.peerId,
-      secret: this.roomParams.secret,
+  private async sendApi(signals: string[]): Promise<string[]> {
+    const res = await apiSend({
+      me: this.roomParams.myId,
+      peer: this.roomParams.peerId,
       payloads: signals,
     });
+
+    return res.payloads;
   }
 }

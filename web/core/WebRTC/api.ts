@@ -1,14 +1,4 @@
-export async function apiRead({
-  myId,
-  secret,
-}: {
-  myId: string;
-  secret: string;
-}): Promise<SignalingPayload[]> {
-  const req: ReadDTO = {
-    me: myId,
-  };
-
+export async function apiRead(req: ReadDTO): Promise<ResponseDTO> {
   const res = await fetch(`/api/signaling/read`, {
     method: "POST",
     headers: {
@@ -17,28 +7,10 @@ export async function apiRead({
     body: JSON.stringify(req),
   });
 
-  return parseResponse(res, secret);
+  return parseResponse(res);
 }
 
-export async function apiSend({
-  myId,
-  peerId,
-  payloads,
-  secret,
-}: {
-  myId: string;
-  peerId: string;
-  payloads: SignalingPayload[];
-  secret: string;
-}): Promise<SignalingPayload[]> {
-  const req: SendDTO = {
-    me: myId,
-    peer: peerId,
-    payloads: payloads.map((payload) =>
-      serializeP2PSignalingPayload(payload, secret),
-    ),
-  };
-
+export async function apiSend(req: SendDTO): Promise<ResponseDTO> {
   const res = await fetch(`/api/signaling/send`, {
     method: "POST",
     headers: {
@@ -47,7 +19,7 @@ export async function apiSend({
     body: JSON.stringify(req),
   });
 
-  return parseResponse(res, secret);
+  return parseResponse(res);
 }
 
 type SendDTO = {
@@ -68,19 +40,14 @@ type ErrorDTO = {
   error: string;
 };
 
-async function parseResponse(
-  res: Response,
-  secret: string,
-): Promise<SignalingPayload[]> {
+async function parseResponse(res: Response): Promise<ResponseDTO> {
   const json: unknown = await res.json();
 
   if (!res.ok) {
     throw new Error((json as ErrorDTO).error);
   }
 
-  return (json as ResponseDTO).payloads.map((payload) =>
-    parseP2PSignalingPayload(payload, secret),
-  );
+  return json as ResponseDTO;
 }
 
 // peer to peer singaling payloads

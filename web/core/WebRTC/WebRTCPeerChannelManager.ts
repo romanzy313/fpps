@@ -81,10 +81,12 @@ export class WebRTCPeerChannelManager {
       const offer = await this.pc!.createOffer();
       await this.pc!.setLocalDescription(offer);
 
-      this.signalingApiMust.send({
-        type: "offer",
-        sdp: offer.sdp!,
-      });
+      this.signalingApiMust.send(
+        JSON.stringify({
+          type: "offer",
+          sdp: offer.sdp!,
+        }),
+      );
     } else {
       // no nothing?
       // need to resend the offer somehow, as these values can expire
@@ -108,8 +110,7 @@ export class WebRTCPeerChannelManager {
     const encoded = TransferProtocol.encode(data);
 
     const arrayBuffer = encoded.buffer;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.dataChannel!.send(arrayBuffer as any);
+    this.dataChannel!.send(arrayBuffer as ArrayBuffer);
   }
 
   _backpressureRemainingBytes(): number {
@@ -167,12 +168,9 @@ export class WebRTCPeerChannelManager {
       iceServers: this.options.iceServers,
     });
     this.setupPeerConnection();
-    this.signalingApi = new SignalingApi(
-      this.options.roomParams,
-      (p2pSignalingPayload) => {
-        this.handleSignalingMessage(p2pSignalingPayload);
-      },
-    );
+    this.signalingApi = new SignalingApi(this.options.roomParams, (data) => {
+      this.handleSignalingMessage(JSON.parse(data));
+    });
     this.signalingApi.start();
   }
 
@@ -202,10 +200,12 @@ export class WebRTCPeerChannelManager {
         );
       }
 
-      this.signalingApiMust.send({
-        type: "ice-candidate",
-        candidate: event.candidate.toJSON(),
-      });
+      this.signalingApiMust.send(
+        JSON.stringify({
+          type: "ice-candidate",
+          candidate: event.candidate.toJSON(),
+        }),
+      );
     };
 
     // Handle incoming data channel (for non-initiator)
@@ -314,10 +314,12 @@ export class WebRTCPeerChannelManager {
     const answer = await this.pc!.createAnswer();
     await this.pc!.setLocalDescription(answer);
 
-    this.signalingApiMust.send({
-      type: "answer",
-      sdp: answer.sdp!,
-    });
+    this.signalingApiMust.send(
+      JSON.stringify({
+        type: "answer",
+        sdp: answer.sdp!,
+      }),
+    );
   }
 
   private async handleAnswer(sdp: string) {

@@ -157,7 +157,7 @@ export class Uploader {
     });
 
     const firstFile = this.files[0]!;
-    let reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>> = firstFile
+    let reader: ReadableStreamDefaultReader<Uint8Array> = firstFile
       .stream()
       .pipeThrough(new TransformStream(new ChunkSplitterTransformer(65536)))
       .getReader();
@@ -272,36 +272,50 @@ function sleep(ms: number) {
   return new Promise((res) => setTimeout(res, ms));
 }
 
-class ChunkSplitterTransformer {
-  constructor(chunkSize = 65536) {
+class ChunkSplitterTransformer implements Transformer<Uint8Array, Uint8Array> {
+  private readonly chunkSize: number;
+  private buffer: Uint8Array;
+  private bufferUsed: number;
+
+  constructor(chunkSize: number = 65536) {
     // 64KB default
     this.chunkSize = chunkSize;
-    this.buffer = new Uint8Array(0);
+    this.buffer = new Uint8Array(chunkSize);
+    this.bufferUsed = 0;
   }
 
-  transform(chunk: any, controller: any) {
-    // Combine buffer with new chunk
-    const combined = new Uint8Array(this.buffer.length + chunk.length);
-    combined.set(this.buffer, 0);
-    combined.set(new Uint8Array(chunk), this.buffer.length);
+  transform(
+    chunk: Uint8Array,
+    controller: TransformStreamDefaultController<Uint8Array>,
+  ): void {
+    let chunkOffset = 0;
 
-    // Split into chunkSize pieces
-    let offset = 0;
-    while (offset + this.chunkSize <= combined.length) {
-      const slice = combined.slice(offset, offset + this.chunkSize);
-      controller.enqueue(slice);
-      offset += this.chunkSize;
+    while (chunkOffset < chunk.length) {
+      // Calculate how much we can copy to buffer
+      const available = this.chunkSize - this.bufferUsed;
+      const toCopy = Math.min(available, chunk.length - chunkOffset);
+
+      // Copy data to buffer
+      this.buffer.set(
+        chunk.subarray(chunkOffset, chunkOffset + toCopy),
+        this.bufferUsed,
+      );
+      this.bufferUsed += toCopy;
+      chunkOffset += toCopy;
+
+      // If buffer is full, enqueue it
+      if (this.bufferUsed === this.chunkSize) {
+        controller.enqueue(this.buffer.slice(0, this.chunkSize));
+        this.bufferUsed = 0;
+      }
     }
-
-    // Keep remaining data in buffer
-    this.buffer = combined.slice(offset);
   }
 
-  flush(controller) {
+  flush(controller: TransformStreamDefaultController<Uint8Array>): void {
     // Send any remaining data
-    if (this.buffer.length > 0) {
-      controller.enqueue(this.buffer);
-      this.buffer = new Uint8Array(0);
+    if (this.bufferUsed > 0) {
+      controller.enqueue(this.buffer.slice(0, this.bufferUsed));
+      this.bufferUsed = 0;
     }
   }
 }
