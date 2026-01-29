@@ -52,7 +52,7 @@ type UniversalSignal =
     }
   | {
       type: "candidate";
-      value: RTCIceCandidate;
+      value: RTCIceCandidate[];
     };
 
 // this is destroyed on error!
@@ -180,7 +180,7 @@ export class BetterPeerChannel {
 
     this.peer = new Peer({
       enableDataChannels: true,
-      batchCandidates: false,
+      batchCandidates: true,
       config: {
         iceServers: getIceServers("Dev"),
       },
@@ -217,7 +217,9 @@ export class BetterPeerChannel {
       if (type === "signal") {
         this.peer!.signal(value);
       } else {
-        this.peer!.addIceCandidate(value);
+        for (const cand of value) {
+          this.peer!.addIceCandidate(cand);
+        }
       }
     });
 
@@ -230,14 +232,11 @@ export class BetterPeerChannel {
       this.signaler.send(JSON.stringify(universal));
     });
     this.peer.on("onicecandidates", (conds) => {
-      for (const cond of conds) {
-        const universal: UniversalSignal = {
-          type: "candidate",
-          value: cond,
-        };
-
-        this.signaler.send(JSON.stringify(universal));
-      }
+      const universal: UniversalSignal = {
+        type: "candidate",
+        value: conds,
+      };
+      this.signaler.send(JSON.stringify(universal));
     });
 
     // this.peer.on("channelOpen", ({ channel: dataChannel }) => {
