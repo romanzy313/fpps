@@ -5,6 +5,7 @@ import {
   TransferStatus,
 } from "./PeerChannel";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
+import { BetterPeerChannel } from "./WebRTC/REWORK";
 
 export class Uploader {
   private WRITE_CHUNK_SIZE = 1 << 15; // 32kb
@@ -21,11 +22,18 @@ export class Uploader {
   private totalProcessedBytes = 0;
   private lastStatSentBytes = 0;
 
-  constructor(private peerChannel: PeerChannel) {
+  constructor(private peerChannel: BetterPeerChannel) {
     peerChannel.listenOnMessage(this.onData.bind(this));
-    peerChannel.listenOnDrained(() => {
-      console.warn("DRAINED");
-    });
+    peerChannel.onDrain = () => {
+      console.warn("UPLOADER DRAINED");
+    };
+    peerChannel.onError = (err) => {
+      console.error("UPLOADER GOT ERROR", err);
+    };
+    // peerChannel.listenOnMessage(this.onData.bind(this));
+    // peerChannel.listenOnDrained(() => {
+    //   console.warn("DRAINED");
+    // });
   }
 
   // TODO: for some reason this does not count duplicate file bytes
@@ -66,7 +74,7 @@ export class Uploader {
   private flushTransferChunks() {
     if (this.writeBufferPos > 0) {
       // console.log("FLUSHING TRANSFER CHUNKS, size", this.writeBufferPos);
-      this.peerChannel.sendMessage({
+      this.peerChannel.write({
         type: "transfer-chunk",
         value: this.writeBuffer.slice(0, this.writeBufferPos),
       });
@@ -77,7 +85,7 @@ export class Uploader {
   private sendBufferedChunk(chunk: Uint8Array) {
     // optimization for large chunks
     if (this.writeBufferPos === 0 && chunk.byteLength > this.WRITE_CHUNK_SIZE) {
-      this.peerChannel.sendMessage({
+      this.peerChannel.write({
         type: "transfer-chunk",
         value: chunk,
       });
@@ -91,7 +99,7 @@ export class Uploader {
     } else {
       this.flushTransferChunks();
 
-      this.peerChannel.sendMessage({
+      this.peerChannel.write({
         type: "transfer-chunk",
         value: chunk,
       });
@@ -100,28 +108,19 @@ export class Uploader {
 
   private done() {
     this.flushTransferChunks();
-    this.peerChannel.sendMessage({
+    this.peerChannel.write({
       type: "transfer-stats",
       value: this.getStats(),
     });
-    this.peerChannel.sendMessage({ type: "transfer-done" });
+    this.peerChannel.write({ type: "transfer-done" });
     this.status.setValue("done");
   }
 
   private hasBackpressure() {
-    const remaining = this.peerChannel.backpressureRemainingBytes();
-
-    const underBackpressure = remaining < this.BACKOFF_BACKPRESSURE_REMAINING;
+    const underBackpressure = this.peerChannel.hasBackpressure;
 
     if (underBackpressure) {
-      console.log(
-        "has backpressure? ",
-        underBackpressure,
-        "remaining",
-        remaining,
-        "BACKOFF",
-        this.BACKOFF_BACKPRESSURE_REMAINING,
-      );
+      console.log("has backpressure? ", underBackpressure);
     }
     return underBackpressure;
   }
@@ -148,10 +147,10 @@ export class Uploader {
     this.totalProcessedBytes = 0;
     this.lastStatSentBytes = 0;
 
-    this.peerChannel.sendMessage({
+    this.peerChannel.write({
       type: "transfer-started",
     });
-    this.peerChannel.sendMessage({
+    this.peerChannel.write({
       type: "transfer-stats",
       value: this.getStats(),
     });
@@ -162,7 +161,7 @@ export class Uploader {
       .pipeThrough(new TransformStream(new ChunkSplitterTransformer(65536)))
       .getReader();
 
-    this.peerChannel.sendMessage({
+    this.peerChannel.write({
       type: "transfer-next-file",
       name: firstFile.webkitRelativePath || firstFile.name,
     });
@@ -206,7 +205,7 @@ export class Uploader {
           .getReader();
 
         // send the next file message
-        this.peerChannel.sendMessage({
+        this.peerChannel.write({
           type: "transfer-next-file",
           name: nextFile.webkitRelativePath || nextFile.name,
         });
@@ -221,7 +220,7 @@ export class Uploader {
         // console.log("PROGRESS SEND STATS", {
         //   value: this.getStats(),
         // });
-        this.peerChannel.sendMessage({
+        this.peerChannel.write({
           type: "transfer-stats",
           value: this.getStats(),
         });
@@ -237,7 +236,7 @@ export class Uploader {
   }
 
   abort() {
-    this.peerChannel.sendMessage({ type: "transfer-abort" });
+    this.peerChannel.write({ type: "transfer-abort" });
     this.internalAbort();
   }
 

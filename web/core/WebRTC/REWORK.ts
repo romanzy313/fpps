@@ -12,6 +12,7 @@ interface BackpressureWriter {
 
 import Peer from "simple-peer";
 import { PeerMessage, TransferProtocol } from "../PeerChannel";
+import { MultiSubscriber } from "../../utils/MultiSubscriber";
 
 // use SSE instead!
 export interface Signaling {
@@ -111,8 +112,9 @@ type ConnOpts = {
 
 // this is destroyed on error!
 // connects right away
-export class BetterWebRTC {
+export class BetterPeerChannel {
   private peer: Peer.Instance | null = null;
+  private _isReady = false; // I dont like this
   public onDrain: (() => void) | null = null;
   // value of permaError means that it is a permanent error, cannot be recovered
   // usually means that connection failed to be established due to privacy settings such as
@@ -121,7 +123,8 @@ export class BetterWebRTC {
     | ((state: "permaError" | "connecting" | "connected") => void)
     | null = null;
   public onError: ((err: Error) => void) | null = null;
-  public onMessage: ((msg: PeerMessage) => void) | null = null;
+
+  _messageSubscribers = new MultiSubscriber<PeerMessage>();
 
   constructor(
     private signaler: Signaling,
@@ -155,6 +158,7 @@ export class BetterWebRTC {
   }
 
   private destroy() {
+    this._isReady = false;
     this.signaler.stop();
     if (this.peer) {
       this.peer.destroy();
@@ -195,6 +199,7 @@ export class BetterWebRTC {
       this.signaler.send(JSON.stringify(data));
     });
     this.peer.on("connect", () => {
+      this._isReady = true;
       if (this.onConnectionState) {
         this.onConnectionState("connected");
       }
@@ -205,9 +210,7 @@ export class BetterWebRTC {
     this.peer.on("data", (data) => {
       const decoded = TransferProtocol.decode(data);
 
-      if (this.onMessage) {
-        this.onMessage(decoded);
-      }
+      this._messageSubscribers.notifyListeners(decoded);
     });
 
     // OR this.peer.on("resume", () => {});
@@ -216,6 +219,18 @@ export class BetterWebRTC {
         this.onDrain();
       }
     });
+  }
+
+  listenOnMessage(cb: (msg: PeerMessage) => void) {
+    this._messageSubscribers.subscribe(cb);
+  }
+
+  isReady(): boolean {
+    return this._isReady;
+  }
+
+  get hasBackpressure(): boolean {
+    return this.peer!.writableNeedDrain;
   }
 
   // writing sends the payload, not the raw DATA!

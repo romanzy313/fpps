@@ -11,6 +11,8 @@ import { PeerChannel } from "./PeerChannel";
 import { parseFile } from "../utils/parseFile";
 import { Uploader } from "./Uploader";
 import { Downloader } from "./Downloader";
+import { BetterPeerChannel } from "./WebRTC/REWORK";
+import { SignalingImpl } from "./WebRTC/SignalingNext";
 // import * as streamsaver from "streamsaver";
 // import { config } from "../config";
 
@@ -83,6 +85,32 @@ export class Core {
       roomParams,
     });
 
+    const betterPeerChannel = new BetterPeerChannel(
+      new SignalingImpl(roomParams),
+      {
+        isInitiator: roomParams.isInitiator,
+        myId: roomParams.myId,
+        peerId: roomParams.peerId,
+      },
+    );
+    // betterPeerChannel.listenOnMessage((message) => {
+    //   switch (message.type) {
+    //     case "preview-stats":
+    //       this.peerFiles.totalCount = message.value.totalCount;
+    //       this.peerFiles.totalBytes = message.value.totalBytes;
+    //       this.filesReactor.notifyListeners();
+
+    //       break;
+    //   }
+    // });
+    betterPeerChannel.onConnectionState = (status) => {
+      this.connectionState.setValue(status as any); // TODO
+      if (status === "connected") {
+        this.sendPreviewStats();
+      }
+    };
+    this.uploader = new Uploader(betterPeerChannel);
+
     // TODO: choose intelligently
     const iceServers = getIceServers("Dev");
 
@@ -116,7 +144,6 @@ export class Core {
       }
     });
 
-    this.uploader = new Uploader(this.peerChannel);
     this.downloader = new Downloader(this.peerChannel);
 
     this.peerManager.connect(); // connect right away?
