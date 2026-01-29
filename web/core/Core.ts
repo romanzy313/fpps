@@ -43,6 +43,7 @@ export class Core {
   private betterPeerChannel: BetterPeerChannel;
   // this should be a signal?
   connectionState = new ValueSubscriber<PeerConnectionStatus>("disconnected");
+  onError: ((err: Error) => void) | null = null;
 
   private uploader: Uploader;
   private downloader: Downloader;
@@ -103,11 +104,21 @@ export class Core {
       }
     });
     betterPeerChannel.onConnectionState = (status) => {
-      this.connectionState.setValue(status as any); // TODO
+      if (status === "connected" || status === "connecting") {
+        this.connectionState.setValue(status);
+      } else if (status === "permaError") {
+        this.connectionState.setValue("failed"); // TODO
+      }
+
       if (status === "connected") {
         this.sendPreviewStats();
       }
     };
+    betterPeerChannel.listenOnError((err) => {
+      if (this.onError) {
+        this.onError(err);
+      }
+    });
     this.uploader = new Uploader(betterPeerChannel);
     this.downloader = new Downloader(betterPeerChannel);
 
