@@ -1,8 +1,8 @@
 import { PeerMessage, TransferProtocol } from "./PeerChannel";
 import { IPeerChannel } from "./WebRTC/REWORK";
 
-const maxPendingBytes = 1 << 18; // 256kb
-const drainMs = 50;
+const maxBackpressure = 1 << 18; // 256kb
+const drainMs = 10;
 
 class TestPeerChannel implements IPeerChannel {
   constructor(
@@ -11,7 +11,7 @@ class TestPeerChannel implements IPeerChannel {
   ) {}
 
   _ready = false;
-  _pendingBytes = maxPendingBytes;
+  _remainingBytes = maxBackpressure;
 
   _onDataCallback: ((message: PeerMessage) => void) | null = null;
   _onDrainedCallback: (() => void) | null = null;
@@ -31,7 +31,7 @@ class TestPeerChannel implements IPeerChannel {
   }
 
   hasBackpressure(): boolean {
-    return this._pendingBytes < 0;
+    return this._remainingBytes < 0;
   }
 
   write(message: PeerMessage) {
@@ -40,22 +40,29 @@ class TestPeerChannel implements IPeerChannel {
     }
 
     const size = TransferProtocol.encode(message).byteLength;
-    this._pendingBytes -= size;
+    this._remainingBytes -= size;
 
     this._sendMessages.push(message);
     this.parent.peerSent(this.index, message);
 
     setTimeout(() => {
-      this._pendingBytes += size;
+      this._remainingBytes += size;
+
+      if (this._remainingBytes > 0) {
+        if (this._onDrainedCallback) {
+          // This technically behaves incorrectly. The web sends it only once
+          this._onDrainedCallback();
+        }
+      }
     }, drainMs);
 
-    const resume = !this.hasBackpressure();
+    const shouldContinue = !this.hasBackpressure();
 
-    if (!resume) {
+    if (!shouldContinue) {
       console.log("UNDER BACKPRESSURE");
     }
 
-    return resume;
+    return shouldContinue;
   }
 
   listenOnDrain(cb: () => void): void {

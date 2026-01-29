@@ -14,20 +14,24 @@ export class Uploader {
   private progressInterval: NodeJS.Timeout | null = null;
 
   private files: File[] = [];
+
   status = new ValueSubscriber<TransferStatus>("idle");
-  private writeBuffer = new Uint8Array(this.WRITE_CHUNK_SIZE);
-  private writeBufferPos = 0;
-  private currentFileIndex = 0;
   private totalProcessedBytes = 0;
 
+  private writeBuffer = new Uint8Array(this.WRITE_CHUNK_SIZE);
+  private writeBufferPos = 0;
+
+  private currentFileIndex = 0;
+  private reader: ReadableStreamDefaultReader<
+    Uint8Array<ArrayBufferLike>
+  > | null = null;
+
   constructor(private peerChannel: IPeerChannel) {
-    peerChannel.listenOnMessage((msg) => {
-      this.onData(msg);
-    });
-    // peerChannel.listenOnMessage(this.onData.bind(this));
-    peerChannel.listenOnDrain(() => {
-      console.warn("UPLOADER DRAINED");
-    });
+    // peerChannel.listenOnMessage((msg) => {
+    //   this.onData(msg);
+    // });
+    peerChannel.listenOnMessage(this.onData.bind(this));
+    peerChannel.listenOnDrain(this.onDrain.bind(this));
     peerChannel.listenOnError((err) => {
       console.error("UPLOADER GOT ERROR", err);
     });
@@ -68,35 +72,45 @@ export class Uploader {
     return this.status.value === "aborted";
   }
 
-  private flushTransferChunks() {
+  private flushTransferChunks(): boolean {
     if (this.writeBufferPos > 0) {
       // console.log("FLUSHING TRANSFER CHUNKS, size", this.writeBufferPos);
-      this.peerChannel.write({
+      const resume = this.peerChannel.write({
         type: "transfer-chunk",
         value: this.writeBuffer.slice(0, this.writeBufferPos),
       });
       this.writeBufferPos = 0;
+
+      return resume;
     }
+
+    return true;
   }
 
-  private sendBufferedChunk(chunk: Uint8Array) {
+  // TODO: abstract this, or don't use :_)
+  private writeBufferedChunk(chunk: Uint8Array): boolean {
+    throw new Error("DONT USE, this is broken");
+
     // optimization for large chunks
     if (this.writeBufferPos === 0 && chunk.byteLength > this.WRITE_CHUNK_SIZE) {
-      this.peerChannel.write({
+      // console.log("Writing large chunk of size", chunk.byteLength);
+
+      return this.peerChannel.write({
         type: "transfer-chunk",
         value: chunk,
       });
-      return;
     }
 
     if (this.writeBufferPos + chunk.byteLength < this.WRITE_CHUNK_SIZE) {
       // buffer
       this.writeBuffer.set(chunk, this.writeBufferPos);
       this.writeBufferPos += chunk.byteLength;
+
+      return true; // no backpressure
     } else {
       this.flushTransferChunks();
 
-      this.peerChannel.write({
+      return this.peerChannel.write({
         type: "transfer-chunk",
         value: chunk,
       });
@@ -115,108 +129,10 @@ export class Uploader {
     if (this.progressInterval) {
       clearInterval(this.progressInterval);
     }
-  }
 
-  private async transferStarted() {
-    if (!this.peerChannel.isReady()) {
-      throw new Error("Peer channel is not ready to upload");
-    }
-
-    if (this.status.value === "transfer") {
-      throw new Error("Cannot start transfer: uploader is already uploading");
-    }
-
-    if (this.files.length === 0) {
-      throw new Error("No files to transfer");
-    }
-
-    this.status.setValue("transfer");
-
-    this.writeBufferPos = 0;
-
-    // TODO: careful
-    this.currentFileIndex = 0;
-    this.totalProcessedBytes = 0;
-
-    this.peerChannel.write({
-      type: "transfer-started",
+    console.log("Transfer finished", {
+      stats: this.getStats(),
     });
-
-    this.peerChannel.write({
-      type: "transfer-stats",
-      value: this.getStats(),
-    });
-    this.progressInterval = setInterval(() => {
-      this.peerChannel.write({
-        type: "transfer-stats",
-        value: this.getStats(),
-      });
-    }, this.PROGRESS_EVERY_MS);
-
-    const firstFile = this.files[0]!;
-    let reader: ReadableStreamDefaultReader<Uint8Array> = firstFile
-      .stream()
-      .pipeThrough(new TransformStream(new ChunkSplitterTransformer(65536)))
-      .getReader();
-
-    this.peerChannel.write({
-      type: "transfer-next-file",
-      name: firstFile.webkitRelativePath || firstFile.name,
-    });
-
-    for (;;) {
-      if (this.isAborted()) {
-        return;
-      }
-
-      if (this.peerChannel.hasBackpressure()) {
-        await sleep(10);
-        continue;
-      }
-
-      const { value, done } = await reader.read();
-
-      // console.log("READING A FILE", {
-      //   byteLen: value?.byteLength,
-      //   done,
-      //   index: this.currentFileIndex,
-      // });
-      await sleep(0); // this is needed for vite to pass the tests... ugh
-
-      if (done) {
-        reader.releaseLock();
-
-        this.flushTransferChunks(); // inefficient, all coms must be buffered
-
-        this.currentFileIndex++;
-        if (this.currentFileIndex === this.files.length) {
-          // actually done
-          // index is out of bounds, so that file progress is correct
-          this.done();
-          return;
-        }
-
-        const nextFile = this.files[this.currentFileIndex]!;
-        reader = nextFile
-          .stream()
-          .pipeThrough(new TransformStream(new ChunkSplitterTransformer(65536)))
-          .getReader();
-
-        // send the next file message
-        this.peerChannel.write({
-          type: "transfer-next-file",
-          name: nextFile.webkitRelativePath || nextFile.name,
-        });
-        continue;
-      }
-
-      this.totalProcessedBytes += value.byteLength;
-      // console.log("SENDING CHUNK OF SIZE", value.byteLength);
-
-      // TODO: the chunks in chrome are very large, the size of the file...
-
-      this.sendBufferedChunk(value);
-    }
   }
 
   stop() {
@@ -253,6 +169,131 @@ export class Uploader {
 
   dispose() {
     this.status.dispose();
+  }
+
+  private transferStarted() {
+    if (!this.peerChannel.isReady()) {
+      throw new Error("Peer channel is not ready to upload");
+    }
+
+    if (this.status.value === "transfer") {
+      throw new Error("Cannot start transfer: uploader is already uploading");
+    }
+
+    if (this.files.length === 0) {
+      throw new Error("No files to transfer");
+    }
+
+    this.status.setValue("transfer");
+
+    this.peerChannel.write({
+      type: "transfer-started",
+    });
+
+    this.peerChannel.write({
+      type: "transfer-stats",
+      value: this.getStats(),
+    });
+    this.progressInterval = setInterval(() => {
+      this.peerChannel.write({
+        type: "transfer-stats",
+        value: this.getStats(),
+      });
+    }, this.PROGRESS_EVERY_MS);
+
+    this.writeBufferPos = 0;
+    this.totalProcessedBytes = 0;
+
+    this.currentFileIndex = 0;
+    this.createReader(0);
+
+    const firstFile = this.files[0]!;
+    this.peerChannel.write({
+      type: "transfer-next-file",
+      name: firstFile.webkitRelativePath || firstFile.name,
+    });
+
+    this.next();
+  }
+
+  private createReader(index: number) {
+    if (this.reader) {
+      // this.reader.releaseLock();
+      this.reader = null;
+    }
+
+    // TODO: check ranges, assert
+    const file = this.files[index]!;
+
+    if (!file) {
+      throw new Error("out of range");
+    }
+
+    const reader = file
+      .stream()
+      .pipeThrough(new TransformStream(new ChunkSplitterTransformer(65536)))
+      .getReader();
+
+    this.reader = reader;
+  }
+
+  private next() {
+    if (!this.reader) {
+      throw new Error("Expected a reader present");
+    }
+
+    // console.warn("ON NEXT");
+
+    this.reader.read().then(({ value, done }) => {
+      if (done) {
+        // console.log("Done", {
+        //   currentIndex: this.currentFileIndex,
+        // });
+        this.currentFileIndex++; // ugly, used for stats
+
+        if (this.currentFileIndex === this.files.length) {
+          this.done();
+        } else {
+          this.createReader(this.currentFileIndex);
+
+          const nextFile = this.files[this.currentFileIndex]!;
+          // legacy
+          this.peerChannel.write({
+            type: "transfer-next-file",
+            name: nextFile.webkitRelativePath || nextFile.name,
+          });
+
+          this.next();
+        }
+        return;
+      }
+
+      this.totalProcessedBytes += value.byteLength;
+
+      const resume = this.peerChannel.write({
+        type: "transfer-chunk",
+        value,
+      });
+
+      // const resume = this.writeBufferedChunk(value);
+      // console.log("Written buffered chunk", {
+      //   size: value.byteLength,
+      //   resume,
+      // });
+      if (resume) {
+        // no backpressure, keep sending
+        this.next();
+      } else {
+        // console.warn("BACKPRESSURE !!1!");
+      }
+    });
+  }
+
+  private onDrain() {
+    // console.warn("DRAINED");
+    if (this.status.value === "transfer") {
+      this.next();
+    }
   }
 }
 

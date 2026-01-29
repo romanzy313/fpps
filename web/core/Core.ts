@@ -104,6 +104,9 @@ export class Core {
       }
     });
     betterPeerChannel.onConnectionState = (status) => {
+      console.log("PEER CHANNEL NEW STATE", {
+        status,
+      });
       if (status === "connected" || status === "connecting") {
         this.connectionState.setValue(status);
       } else if (status === "permaError") {

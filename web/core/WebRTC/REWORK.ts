@@ -43,6 +43,9 @@ export interface IPeerChannel {
   listenOnError(cb: (err: Error) => void): void;
   start(): void;
   destroy(): void;
+
+  // if true is returned, continue sending
+  // if false is returned, backpressure is encountered. Backoff until drain event
   write(msg: PeerMessage): boolean;
 }
 
@@ -115,11 +118,16 @@ export class BetterPeerChannel implements IPeerChannel {
   }
 
   hasBackpressure(): boolean {
-    return this.remaniningBackpressure < 0;
+    if (!this.dataChannel) {
+      throw new Error("Assertion failed: no dataChannel");
+    }
+    const remaining =
+      this.dataChannel.bufferedAmountLowThreshold -
+      this.dataChannel.bufferedAmount;
+
+    return remaining < 0;
   }
 
-  // if true is returned, continue sending
-  // if false is returned, backpressure is encountered. Backoff until drain event
   write(msg: PeerMessage): boolean {
     if (!this.dataChannel) {
       throw new Error("Assertion failed: no dataChannel");
@@ -132,12 +140,12 @@ export class BetterPeerChannel implements IPeerChannel {
 
     const encoded = TransferProtocol.encode(msg);
 
-    const resume = !this.hasBackpressure;
+    const continueWriting = !this.hasBackpressure();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.dataChannel.send(encoded as any);
 
-    return resume;
+    return continueWriting;
   }
 
   private permanentError() {
@@ -212,7 +220,6 @@ export class BetterPeerChannel implements IPeerChannel {
     });
 
     dataChannel.addEventListener("bufferedamountlow", () => {
-      console.log("BUFFERED AMOUNT LOW");
       if (this.onDrain) {
         this.onDrain();
       }
@@ -231,7 +238,7 @@ export class BetterPeerChannel implements IPeerChannel {
 
     this.peer = new Peer({
       enableDataChannels: true,
-      batchCandidates: true,
+      batchCandidates: false,
       config: {
         iceServers: getIceServers("Dev"),
       },
@@ -314,16 +321,5 @@ export class BetterPeerChannel implements IPeerChannel {
     this.peer.start({
       polite: this.opts.isInitiator,
     });
-  }
-
-  private get remaniningBackpressure(): number {
-    if (!this.dataChannel) {
-      throw new Error("Assertion failed: no dataChannel");
-    }
-
-    return (
-      this.dataChannel.bufferedAmountLowThreshold -
-      this.dataChannel.bufferedAmount
-    );
   }
 }
