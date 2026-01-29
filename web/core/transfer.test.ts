@@ -16,7 +16,7 @@ describe("TestPeerChannels", () => {
 
     const peerA = testChannels.getPeerChannel("a");
 
-    peerA.sendMessage({
+    peerA.write({
       type: "transfer-done",
     });
 

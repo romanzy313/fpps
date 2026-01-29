@@ -35,6 +35,17 @@ function reworkSignaling() {
   evtSource.close();
 }
 
+export interface IPeerChannel {
+  isReady(): boolean;
+  hasBackpressure(): boolean;
+  listenOnMessage(cb: (msg: PeerMessage) => void): void;
+  listenOnDrain(cb: () => void): void;
+  listenOnError(cb: (err: Error) => void): void;
+  start(): void;
+  destroy(): void;
+  write(msg: PeerMessage): boolean;
+}
+
 type ConnOpts = {
   myId: string;
   peerId: string;
@@ -57,12 +68,12 @@ type UniversalSignal =
 
 // this is destroyed on error!
 // connects right away
-export class BetterPeerChannel {
+export class BetterPeerChannel implements IPeerChannel {
   private peer: Peer | null = null;
   private dataChannel: RTCDataChannel | null = null;
   private _isReady = false; // I dont like this
   private _destroyed = false;
-  public onDrain: (() => void) | null = null;
+  private onDrain: (() => void) | null = null;
   // value of permaError means that it is a permanent error, cannot be recovered
   // usually means that connection failed to be established due to privacy settings such as
   // disabled WebRTC, or no direction connections are allowed
@@ -78,6 +89,20 @@ export class BetterPeerChannel {
     private opts: ConnOpts,
   ) {}
 
+  isReady(): boolean {
+    return this._isReady;
+  }
+
+  listenOnMessage(cb: (msg: PeerMessage) => void) {
+    this._messageSubscribers.subscribe(cb);
+  }
+  listenOnDrain(cb: () => void) {
+    this.onDrain = cb;
+  }
+  listenOnError(cb: (err: Error) => void) {
+    this.onError = cb;
+  }
+
   start() {
     this.restart();
 
@@ -87,6 +112,32 @@ export class BetterPeerChannel {
     //     readyState: this.dataChannel?.readyState,
     //   });
     // }, 3000);
+  }
+
+  hasBackpressure(): boolean {
+    return this.remaniningBackpressure < 0;
+  }
+
+  // if true is returned, continue sending
+  // if false is returned, backpressure is encountered. Backoff until drain event
+  write(msg: PeerMessage): boolean {
+    if (!this.dataChannel) {
+      throw new Error("Assertion failed: no dataChannel");
+    }
+
+    if (this.dataChannel.readyState !== "open") {
+      console.error("dataChannel", { dataChannel: this.dataChannel });
+      throw new Error("Assertion failed: dataChannel is not open");
+    }
+
+    const encoded = TransferProtocol.encode(msg);
+
+    const resume = !this.hasBackpressure;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.dataChannel.send(encoded as any);
+
+    return resume;
   }
 
   private permanentError() {
@@ -265,15 +316,7 @@ export class BetterPeerChannel {
     });
   }
 
-  listenOnMessage(cb: (msg: PeerMessage) => void) {
-    this._messageSubscribers.subscribe(cb);
-  }
-
-  isReady(): boolean {
-    return this._isReady;
-  }
-
-  get remaniningBackpressure(): number {
+  private get remaniningBackpressure(): number {
     if (!this.dataChannel) {
       throw new Error("Assertion failed: no dataChannel");
     }
@@ -282,31 +325,5 @@ export class BetterPeerChannel {
       this.dataChannel.bufferedAmountLowThreshold -
       this.dataChannel.bufferedAmount
     );
-  }
-
-  get hasBackpressure(): boolean {
-    return this.remaniningBackpressure < 0;
-  }
-
-  // if true is returned, continue sending
-  // if false is returned, backpressure is encountered. Backoff until drain event
-  write(msg: PeerMessage): boolean {
-    if (!this.dataChannel) {
-      throw new Error("Assertion failed: no dataChannel");
-    }
-
-    if (this.dataChannel.readyState !== "open") {
-      console.error("dataChannel", { dataChannel: this.dataChannel });
-      throw new Error("Assertion failed: dataChannel is not open");
-    }
-
-    const encoded = TransferProtocol.encode(msg);
-
-    const resume = !this.hasBackpressure;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.dataChannel.send(encoded as any);
-
-    return resume;
   }
 }

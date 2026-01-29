@@ -1,14 +1,16 @@
-import { PeerChannel, PeerMessage, TransferProtocol } from "./PeerChannel";
+import { PeerMessage, TransferProtocol } from "./PeerChannel";
+import { IPeerChannel } from "./WebRTC/REWORK";
 
-const maxPendingBytes = (1 << 15) * 3; // 32kb * 3
+const maxPendingBytes = 1 << 18; // 256kb
 const drainMs = 5;
 
-class TestPeerChannel implements PeerChannel {
+class TestPeerChannel implements IPeerChannel {
   constructor(
     private parent: TestPeerChannels,
     private index: number,
   ) {}
 
+  _ready = false;
   _prendingBytes = maxPendingBytes;
 
   _onDataCallback: ((message: PeerMessage) => void) | null = null;
@@ -16,21 +18,33 @@ class TestPeerChannel implements PeerChannel {
   _receivedMessages: PeerMessage[] = [];
   _sendMessages: PeerMessage[] = [];
 
+  start(): void {
+    this._ready = true;
+  }
+
+  destroy(): void {
+    this._ready = false;
+  }
+
   isReady(): boolean {
-    return true;
+    return this._ready;
   }
 
-  backpressureRemainingBytes(): number {
-    return this._prendingBytes;
+  hasBackpressure(): boolean {
+    return this._prendingBytes < 0;
   }
 
-  sendMessage(message: PeerMessage): void {
+  write(message: PeerMessage) {
+    if (!this._ready) {
+      throw new Error("Not ready");
+    }
+
     const size = TransferProtocol.encode(message).byteLength;
     this._prendingBytes -= size;
 
-    if (this._prendingBytes < 0) {
-      throw new Error("buckled under backpressure");
-    }
+    // if (this._prendingBytes < 0) {
+    //   throw new Error("buckled under backpressure");
+    // }
 
     this._sendMessages.push(message);
     this.parent.peerSent(this.index, message);
@@ -38,14 +52,22 @@ class TestPeerChannel implements PeerChannel {
     setTimeout(() => {
       this._prendingBytes += size;
     }, drainMs);
+
+    const resume = !this.hasBackpressure();
+
+    return resume;
   }
 
-  listenOnDrained(cb: () => void): void {
+  listenOnDrain(cb: () => void): void {
     this._onDrainedCallback = cb;
   }
 
   listenOnMessage(cb: (message: PeerMessage) => void): void {
     this._onDataCallback = cb;
+  }
+
+  listenOnError(_: (err: Error) => void): void {
+    //
   }
 }
 
@@ -56,6 +78,8 @@ export class TestPeerChannels {
 
   constructor(private backpressureChance: number) {
     this.peers = [new TestPeerChannel(this, 0), new TestPeerChannel(this, 1)];
+    this.peers[0].start();
+    this.peers[1].start();
   }
 
   private otherIndex(index: number): number {
@@ -65,7 +89,7 @@ export class TestPeerChannels {
     return id === "a" ? 0 : 1;
   }
 
-  getPeerChannel(id: "a" | "b"): PeerChannel {
+  getPeerChannel(id: "a" | "b"): TestPeerChannel {
     return this.peers[this.getPeerIndex(id)];
   }
   getSentMessages(id: "a" | "b"): PeerMessage[] {
@@ -83,22 +107,5 @@ export class TestPeerChannels {
         otherPeer._onDataCallback(data);
       }
     }, this.latencyMs);
-
-    // const thisPeer = this.peers[index]!;
-
-    // if (
-    //   !thisPeer._underBackpressure &&
-    //   Math.random() < this.backpressureChance
-    // ) {
-    //   console.log("RANDOM BACKPRESSURE");
-    //   const thisPeer = this.peers[index]!;
-    //   thisPeer._underBackpressure = true;
-    //   setTimeout(() => {
-    //     thisPeer._underBackpressure = false;
-    //     if (thisPeer._onDrainedCallback) {
-    //       thisPeer._onDrainedCallback();
-    //     }
-    //   }, this.backpressureMs);
-    // }
   }
 }

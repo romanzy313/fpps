@@ -5,11 +5,10 @@ import {
   TransferStatus,
 } from "./PeerChannel";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
-import { BetterPeerChannel } from "./WebRTC/REWORK";
+import { IPeerChannel } from "./WebRTC/REWORK";
 
 export class Uploader {
   private WRITE_CHUNK_SIZE = 1 << 15; // 32kb
-  private BACKOFF_BACKPRESSURE_REMAINING = this.WRITE_CHUNK_SIZE * 2;
 
   // TODO: send the progress every 0.5 seconds!
   private PROGRESS_EVERY_BYTES = (1 << 13) * 16; // 8 * 16kb
@@ -22,17 +21,17 @@ export class Uploader {
   private totalProcessedBytes = 0;
   private lastStatSentBytes = 0;
 
-  constructor(private peerChannel: BetterPeerChannel) {
+  constructor(private peerChannel: IPeerChannel) {
     peerChannel.listenOnMessage((msg) => {
       this.onData(msg);
     });
     // peerChannel.listenOnMessage(this.onData.bind(this));
-    peerChannel.onDrain = () => {
+    peerChannel.listenOnDrain(() => {
       console.warn("UPLOADER DRAINED");
-    };
-    peerChannel.onError = (err) => {
+    });
+    peerChannel.listenOnError((err) => {
       console.error("UPLOADER GOT ERROR", err);
-    };
+    });
     // peerChannel.listenOnMessage(this.onData.bind(this));
     // peerChannel.listenOnDrained(() => {
     //   console.warn("DRAINED");
@@ -119,15 +118,6 @@ export class Uploader {
     this.status.setValue("done");
   }
 
-  private hasBackpressure() {
-    const underBackpressure = this.peerChannel.hasBackpressure;
-
-    if (underBackpressure) {
-      console.log("has backpressure? ", underBackpressure);
-    }
-    return underBackpressure;
-  }
-
   private async start() {
     if (!this.peerChannel.isReady()) {
       throw new Error("Peer channel is not ready to upload");
@@ -174,7 +164,7 @@ export class Uploader {
         return;
       }
 
-      if (this.hasBackpressure()) {
+      if (this.peerChannel.hasBackpressure()) {
         await sleep(10);
         continue;
       }

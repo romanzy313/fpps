@@ -6,7 +6,7 @@ import {
   zeroTransferStats,
 } from "./PeerChannel";
 import { AsyncZipDeflate, Zip } from "fflate/browser";
-import { BetterPeerChannel } from "./WebRTC/REWORK";
+import { IPeerChannel } from "./WebRTC/REWORK";
 
 export class Downloader {
   status = new ValueSubscriber<TransferStatus>("idle");
@@ -15,7 +15,7 @@ export class Downloader {
   private zip: Zip | null = null;
   private deflate: AsyncZipDeflate | null = null;
 
-  constructor(private peerChannel: BetterPeerChannel) {
+  constructor(private peerChannel: IPeerChannel) {
     peerChannel.listenOnMessage((msg) => {
       this.onData(msg);
     });
