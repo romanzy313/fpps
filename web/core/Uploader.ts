@@ -10,8 +10,8 @@ import { IPeerChannel } from "./WebRTC/REWORK";
 export class Uploader {
   private WRITE_CHUNK_SIZE = 1 << 15; // 32kb
 
-  // TODO: send the progress every 0.5 seconds!
-  private PROGRESS_EVERY_BYTES = (1 << 13) * 16; // 8 * 16kb
+  private PROGRESS_EVERY_MS = 1000;
+  private progressInterval: NodeJS.Timeout | null = null;
 
   private files: File[] = [];
   status = new ValueSubscriber<TransferStatus>("idle");
@@ -19,7 +19,6 @@ export class Uploader {
   private writeBufferPos = 0;
   private currentFileIndex = 0;
   private totalProcessedBytes = 0;
-  private lastStatSentBytes = 0;
 
   constructor(private peerChannel: IPeerChannel) {
     peerChannel.listenOnMessage((msg) => {
@@ -32,10 +31,6 @@ export class Uploader {
     peerChannel.listenOnError((err) => {
       console.error("UPLOADER GOT ERROR", err);
     });
-    // peerChannel.listenOnMessage(this.onData.bind(this));
-    // peerChannel.listenOnDrained(() => {
-    //   console.warn("DRAINED");
-    // });
   }
 
   // TODO: for some reason this does not count duplicate file bytes
@@ -109,6 +104,10 @@ export class Uploader {
   }
 
   private done() {
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+    }
+
     this.flushTransferChunks();
     this.peerChannel.write({
       type: "transfer-stats",
@@ -118,7 +117,7 @@ export class Uploader {
     this.status.setValue("done");
   }
 
-  private async start() {
+  private async startTransfer() {
     if (!this.peerChannel.isReady()) {
       throw new Error("Peer channel is not ready to upload");
     }
@@ -138,15 +137,21 @@ export class Uploader {
     // TODO: careful
     this.currentFileIndex = 0;
     this.totalProcessedBytes = 0;
-    this.lastStatSentBytes = 0;
 
     this.peerChannel.write({
       type: "transfer-started",
     });
+
     this.peerChannel.write({
       type: "transfer-stats",
       value: this.getStats(),
     });
+    this.progressInterval = setInterval(() => {
+      this.peerChannel.write({
+        type: "transfer-stats",
+        value: this.getStats(),
+      });
+    }, this.PROGRESS_EVERY_MS);
 
     const firstFile = this.files[0]!;
     let reader: ReadableStreamDefaultReader<Uint8Array> = firstFile
@@ -205,20 +210,6 @@ export class Uploader {
         continue;
       }
 
-      if (
-        this.totalProcessedBytes - this.lastStatSentBytes >
-        this.PROGRESS_EVERY_BYTES
-      ) {
-        this.lastStatSentBytes = this.totalProcessedBytes;
-        // console.log("PROGRESS SEND STATS", {
-        //   value: this.getStats(),
-        // });
-        this.peerChannel.write({
-          type: "transfer-stats",
-          value: this.getStats(),
-        });
-      }
-
       this.totalProcessedBytes += value.byteLength;
       // console.log("SENDING CHUNK OF SIZE", value.byteLength);
 
@@ -245,7 +236,7 @@ export class Uploader {
   private onData(message: PeerMessage) {
     switch (message.type) {
       case "transfer-start":
-        this.start();
+        this.startTransfer();
         break;
       case "transfer-abort":
         if (this.status.value === "transfer") {
