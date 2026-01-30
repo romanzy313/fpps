@@ -58,6 +58,9 @@ export function Peer({
 
       <TransferProgress stats={transferStats}></TransferProgress>
 
+      {/* Spacer to match Me component's upload section height on desktop */}
+      <div className="upload-section-spacer"></div>
+
       <div className="file-section__actions">
         <div className="actions-row">
           <button
