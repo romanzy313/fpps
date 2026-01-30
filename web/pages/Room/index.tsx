@@ -6,8 +6,6 @@ import { useRoom } from "../../hooks/useRoom";
 import { PeerConnectionStatus } from "../../core/WebRTC/types";
 
 export function Room() {
-  // const { value, setValue } = useRoomParams(); // TODO: maybe this is needed to update it?
-
   const {
     connectionState,
     myFiles,
@@ -25,14 +23,14 @@ export function Room() {
   } = useRoom();
 
   return (
-    <div>
+    <div className="room-container">
       <script src="/streamsaver/StreamSaver.js"></script>
       <PeerStatus status={connectionState} error={null}></PeerStatus>
       {connectionState !== "connected" ? (
         <Share code={shareCode}></Share>
       ) : null}
-      <div>
-        <div className={"my-files"}>
+      <div className="files-layout">
+        <div className="my-files">
           <Me
             peerFiles={myFiles}
             uploadStatus={uploadStatus}
@@ -42,7 +40,7 @@ export function Room() {
             abortUpload={abortUpload}
           ></Me>
         </div>
-        <div className={"peer-files"}>
+        <div className="peer-files">
           <Peer
             peerFiles={peerFiles}
             downloadStatus={downloadStatus}
@@ -58,12 +56,20 @@ export function Room() {
 
 function Share({ code }: { code: string }) {
   return (
-    <div>
-      <div>
-        Invite them with the following code: <b>{code}</b>
+    <div className="share-section">
+      <h2 className="share-section__title">Waiting for Peer to Connect</h2>
+      <div className="share-section__code-container">
+        <div className="share-section__code-label">Share Code</div>
+        <div className="share-section__code">{code}</div>
       </div>
-      <div>
-        Or share this link: <i>{`${config.appUrl}/room#${code}`}</i>{" "}
+      <div className="share-section__link-container">
+        <div className="share-section__link-label">Or share this link:</div>
+        <a
+          href={`${config.appUrl}/room#${code}`}
+          className="share-section__link"
+        >
+          {`${config.appUrl}/room#${code}`}
+        </a>
       </div>
     </div>
   );
@@ -79,24 +85,38 @@ function PeerStatus({
   function getText() {
     switch (status) {
       case "connected":
-        return "Peer is connected.";
+        return "Peer is connected";
       case "connecting":
-        return "Peer is connecting.";
+        return "Connecting to peer...";
       case "disconnected":
-        return "Waiting for peer.";
+        return "Waiting for peer";
       default:
         return "";
     }
   }
 
-  // switch (status) {
-  //   case:
-  //     }
+  function getIndicatorClass() {
+    switch (status) {
+      case "connected":
+        return "peer-status__indicator--connected";
+      case "connecting":
+        return "peer-status__indicator--connecting";
+      case "disconnected":
+        return "peer-status__indicator--disconnected";
+      default:
+        return "";
+    }
+  }
 
   return (
-    <div>
-      <div>{getText()}</div>
-      {error ? <div>ERROR: {error.message}</div> : null}
+    <div className="peer-status">
+      <div className="peer-status__content">
+        <div className={`peer-status__indicator ${getIndicatorClass()}`}></div>
+        <div className="peer-status__text">{getText()}</div>
+      </div>
+      {error ? (
+        <div className="peer-status__error">ERROR: {error.message}</div>
+      ) : null}
     </div>
   );
 }

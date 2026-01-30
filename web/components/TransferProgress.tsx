@@ -4,25 +4,42 @@ import { formatFileSize } from "../utils/formatSize";
 type Props = {
   stats: TransferStats;
 };
+
 export function TransferProgress({ stats: transferStats }: Props) {
   const progressText = computeProgressText(
     transferStats.transferredBytes,
     transferStats.totalBytes,
   );
 
+  const progressRatio = computeProgressRatio(
+    transferStats.transferredBytes,
+    transferStats.totalBytes,
+  );
+
+  const isActive = transferStats.transferredBytes > 0 && progressRatio < 1;
+
   return (
-    <div>
-      <div>
-        <span>{transferStats.currentIndex}</span> out of{" "}
-        <span>{transferStats.totalFiles}</span> files
+    <div className="transfer-progress">
+      <div className="transfer-progress__row">
+        <span className="transfer-progress__label">Files:</span>
+        <span className="transfer-progress__value">
+          {transferStats.currentIndex} / {transferStats.totalFiles}
+        </span>
       </div>
-      <div>
-        <span>{formatFileSize(transferStats.transferredBytes)}</span> out of{" "}
-        <span>{formatFileSize(transferStats.totalBytes)}</span>
+      <div className="transfer-progress__row">
+        <span className="transfer-progress__label">Data:</span>
+        <span className="transfer-progress__value">
+          {formatFileSize(transferStats.transferredBytes)} /{" "}
+          {formatFileSize(transferStats.totalBytes)}
+        </span>
       </div>
-      <div>
-        Progress: <span>{progressText}</span>
+      <div className="transfer-progress__bar-container">
+        <div
+          className={`transfer-progress__bar ${isActive ? "transfer-progress__bar--active" : ""}`}
+          style={{ width: `${progressRatio * 100}%` }}
+        ></div>
       </div>
+      <div className="transfer-progress__percentage">{progressText}</div>
     </div>
   );
 }

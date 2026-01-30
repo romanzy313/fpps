@@ -21,43 +21,70 @@ export function Peer({
   const fileCount = peerFiles.totalCount;
   const fileSizeText = formatFileSize(peerFiles.totalBytes);
 
+  function getStatusClass() {
+    switch (downloadStatus) {
+      case "idle":
+        return "transfer-status__state--idle";
+      case "transfer":
+        return "transfer-status__state--transfer";
+      case "done":
+        return "transfer-status__state--done";
+      case "aborted":
+        return "transfer-status__state--error";
+      default:
+        return "transfer-status__state--idle";
+    }
+  }
+
   return (
-    <>
-      <h2>Peer</h2>
-      <div>
-        {fileCount} files, {fileSizeText}
+    <div className="file-section">
+      <div className="file-section__header">
+        <h2 className="file-section__title">Peer&apos;s Files</h2>
+        <div className="file-section__summary">
+          <div className="file-section__summary-item">
+            <span className="file-section__summary-label">Files:</span>
+            <span className="file-section__summary-value">{fileCount}</span>
+          </div>
+          <div className="file-section__summary-item">
+            <span className="file-section__summary-label">Size:</span>
+            <span className="file-section__summary-value">{fileSizeText}</span>
+          </div>
+        </div>
       </div>
-      <div>
-        <h3>Download state: {downloadStatus}</h3>
+
+      <div className="transfer-status">
+        <div className="transfer-status__title">Download Status</div>
+        <div className={`transfer-status__state ${getStatusClass()}`}>
+          {downloadStatus}
+        </div>
         <TransferProgress stats={transferStats}></TransferProgress>
       </div>
-      <div
-        style={{
-          display: "flex",
-          gap: "1rem",
-          padding: "1rem",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <button
-            type="button"
-            disabled={fileCount === 0 || downloadStatus === "transfer"}
-            onClick={() => startDownload()}
-          >
-            Download as ZIP
-          </button>
-        </div>
-        <div>
-          <button
-            type="button"
-            disabled={downloadStatus !== "transfer"}
-            onClick={() => abortDownload()}
-          >
-            Stop
-          </button>
+
+      <div className="file-section__actions">
+        <div className="actions-row">
+          <div className="action-group">
+            <label className="action-group__label">Download</label>
+            <button
+              type="button"
+              disabled={fileCount === 0 || downloadStatus === "transfer"}
+              onClick={() => startDownload()}
+            >
+              Download as ZIP
+            </button>
+          </div>
+          <div className="action-group">
+            <label className="action-group__label">Stop Transfer</label>
+            <button
+              className="danger"
+              type="button"
+              disabled={downloadStatus !== "transfer"}
+              onClick={() => abortDownload()}
+            >
+              Stop Download
+            </button>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
