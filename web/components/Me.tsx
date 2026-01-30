@@ -1,3 +1,4 @@
+import { useState } from "preact/hooks";
 import { FullFilesState } from "../core/Core";
 import { TransferStats, TransferStatus } from "../core/PeerChannel";
 import { formatFileSize } from "../utils/formatSize";
@@ -24,6 +25,48 @@ export function Me({
   const fileSizeText = formatFileSize(peerFiles.totalBytes);
 
   const canUploadFiles = uploadStatus !== "transfer";
+
+  const [isDraggingFolder, setIsDraggingFolder] = useState(false);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+
+  function handleDragOver(e: DragEvent, type: "folder" | "files") {
+    e.preventDefault();
+    e.stopPropagation();
+    if (type === "folder") {
+      setIsDraggingFolder(true);
+    } else {
+      setIsDraggingFiles(true);
+    }
+  }
+
+  function handleDragLeave(e: DragEvent, type: "folder" | "files") {
+    e.preventDefault();
+    e.stopPropagation();
+    if (type === "folder") {
+      setIsDraggingFolder(false);
+    } else {
+      setIsDraggingFiles(false);
+    }
+  }
+
+  function handleDrop(e: DragEvent, type: "folder" | "files") {
+    e.preventDefault();
+    e.stopPropagation();
+    if (type === "folder") {
+      setIsDraggingFolder(false);
+    } else {
+      setIsDraggingFiles(false);
+    }
+
+    if (!canUploadFiles) {
+      return;
+    }
+
+    const files = e.dataTransfer?.files;
+    if (files) {
+      onFilesSelect(files);
+    }
+  }
 
   function onFilesSelect(fileList: FileList) {
     if (!canUploadFiles) {
@@ -79,9 +122,17 @@ export function Me({
       <div className="file-section__actions">
         <div className="actions-row">
           <div className="action-group">
-            <label className="action-group__label">Upload Folder</label>
-            <div className="file-input-wrapper">
+            <label className="action-group__label" htmlFor="upload-folder">
+              Upload Folder
+            </label>
+            <div
+              className={`file-input-wrapper ${isDraggingFolder ? "file-input-wrapper--dragging" : ""}`}
+              onDragOver={(e) => handleDragOver(e, "folder")}
+              onDragLeave={(e) => handleDragLeave(e, "folder")}
+              onDrop={(e) => handleDrop(e, "folder")}
+            >
               <input
+                id="upload-folder"
                 type="file"
                 disabled={!canUploadFiles}
                 multiple
@@ -96,9 +147,17 @@ export function Me({
             </div>
           </div>
           <div className="action-group">
-            <label className="action-group__label">Upload Files</label>
-            <div className="file-input-wrapper">
+            <label className="action-group__label" htmlFor="upload-files">
+              Upload Files
+            </label>
+            <div
+              className={`file-input-wrapper ${isDraggingFiles ? "file-input-wrapper--dragging" : ""}`}
+              onDragOver={(e) => handleDragOver(e, "files")}
+              onDragLeave={(e) => handleDragLeave(e, "files")}
+              onDrop={(e) => handleDrop(e, "files")}
+            >
               <input
+                id="upload-files"
                 type="file"
                 disabled={!canUploadFiles}
                 multiple
@@ -108,26 +167,20 @@ export function Me({
           </div>
         </div>
         <div className="actions-row">
-          <div className="action-group">
-            <label className="action-group__label">Actions</label>
-            <button
-              className="secondary"
-              disabled={uploadStatus === "transfer"}
-              onClick={clearFiles}
-            >
-              Clear Files
-            </button>
-          </div>
-          <div className="action-group">
-            <label className="action-group__label">Stop Transfer</label>
-            <button
-              className="danger"
-              disabled={uploadStatus !== "transfer"}
-              onClick={abortUpload}
-            >
-              Stop Upload
-            </button>
-          </div>
+          <button
+            className="secondary"
+            disabled={uploadStatus === "transfer"}
+            onClick={clearFiles}
+          >
+            Clear Files
+          </button>
+          <button
+            className="danger"
+            disabled={uploadStatus !== "transfer"}
+            onClick={abortUpload}
+          >
+            Stop Upload
+          </button>
         </div>
       </div>
     </div>

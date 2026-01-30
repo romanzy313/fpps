@@ -310,15 +310,29 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: var(--font-weight-medium);
+    cursor: pointer;
 }
 
 .action-group button {
     width: 100%;
 }
 
+.actions-row button {
+    flex: 1;
+}
+
 /* File Input Styling */
 .file-input-wrapper {
     position: relative;
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xs);
+    transition: border-color var(--transition-fast);
+}
+
+.file-input-wrapper--dragging {
+    border-color: var(--color-accent);
+    background-color: rgba(90, 95, 245, 0.1);
 }
 
 .file-input-wrapper input[type="file"] {

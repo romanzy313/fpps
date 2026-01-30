@@ -60,27 +60,21 @@ export function Peer({
 
       <div className="file-section__actions">
         <div className="actions-row">
-          <div className="action-group">
-            <label className="action-group__label">Download</label>
-            <button
-              type="button"
-              disabled={fileCount === 0 || downloadStatus === "transfer"}
-              onClick={() => startDownload()}
-            >
-              Download as ZIP
-            </button>
-          </div>
-          <div className="action-group">
-            <label className="action-group__label">Stop Transfer</label>
-            <button
-              className="danger"
-              type="button"
-              disabled={downloadStatus !== "transfer"}
-              onClick={() => abortDownload()}
-            >
-              Stop Download
-            </button>
-          </div>
+          <button
+            type="button"
+            disabled={fileCount === 0 || downloadStatus === "transfer"}
+            onClick={() => startDownload()}
+          >
+            Download as ZIP
+          </button>
+          <button
+            className="danger"
+            type="button"
+            disabled={downloadStatus !== "transfer"}
+            onClick={() => abortDownload()}
+          >
+            Stop Download
+          </button>
         </div>
       </div>
     </div>
