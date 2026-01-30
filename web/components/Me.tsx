@@ -1,8 +1,7 @@
-import { JsonDebug } from "./JsonDebug";
 import { FullFilesState } from "../core/Core";
 import { TransferStats, TransferStatus } from "../core/PeerChannel";
 import { formatFileSize } from "../utils/formatSize";
-import { computeProgressText } from "../utils/computeProgress";
+import { TransferProgress } from "./TransferProgress";
 
 type Props = {
   peerFiles: FullFilesState;
@@ -13,7 +12,7 @@ type Props = {
   abortUpload: () => void;
 };
 
-export function MyFiles({
+export function Me({
   peerFiles,
   uploadStatus,
   transferStats,
@@ -22,12 +21,7 @@ export function MyFiles({
   abortUpload,
 }: Props) {
   const fileCount = peerFiles.totalCount;
-  const fileSize = peerFiles.totalBytes;
-
-  const progressText = computeProgressText(
-    transferStats.transferredBytes,
-    transferStats.totalBytes,
-  );
+  const fileSizeText = formatFileSize(peerFiles.totalBytes);
 
   const canUploadFiles = uploadStatus !== "transfer";
 
@@ -47,17 +41,19 @@ export function MyFiles({
 
   return (
     <>
-      <h2>
-        My Files ({fileCount} files, {formatFileSize(fileSize)})
-      </h2>
-      <div className="bg-grey" style={{ height: "20rem", overflowY: "auto" }}>
-        <div>File browser does here</div>
-        <JsonDebug data={peerFiles} />
+      <h2>Me</h2>
+      <div>
+        {fileCount} files, {fileSizeText}
       </div>
+
+      <div>
+        <h3>Upload state: {uploadStatus}</h3>
+        <TransferProgress stats={transferStats}></TransferProgress>
+      </div>
+
       <div
         style={{
           display: "flex",
-          justifyContent: "space-evenly",
           gap: "1rem",
           padding: "1rem",
           alignItems: "center",
@@ -99,22 +95,6 @@ export function MyFiles({
             Stop
           </button>
         </div>
-      </div>
-      <div>
-        <h3>Upload state: {uploadStatus}</h3>
-        <div>
-          <div>
-            <span>{transferStats.currentIndex}</span> out of{" "}
-            <span>{transferStats.totalFiles}</span> files
-          </div>
-          <div>
-            <span>{formatFileSize(transferStats.transferredBytes)}</span> out of{" "}
-            <span>{formatFileSize(transferStats.totalBytes)}</span>
-          </div>
-        </div>
-      </div>
-      <div>
-        Progress: <span>{progressText}</span>
       </div>
     </>
   );

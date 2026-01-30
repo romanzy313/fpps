@@ -1,6 +1,6 @@
 import "./style.css";
-import { MyFiles } from "../../components/MyFiles";
-import { PeerFiles } from "../../components/PeerFiles";
+import { Me } from "../../components/Me";
+import { Peer } from "../../components/Peer";
 import { config } from "../../config";
 import { useRoom } from "../../hooks/useRoom";
 import { PeerConnectionStatus } from "../../core/WebRTC/types";
@@ -33,23 +33,23 @@ export function Room() {
       ) : null}
       <div>
         <div className={"my-files"}>
-          <MyFiles
+          <Me
             peerFiles={myFiles}
             uploadStatus={uploadStatus}
             addMyFiles={addMoreFiles}
             clearFiles={clearFiles}
             transferStats={uploadStats}
             abortUpload={abortUpload}
-          ></MyFiles>
+          ></Me>
         </div>
         <div className={"peer-files"}>
-          <PeerFiles
+          <Peer
             peerFiles={peerFiles}
             downloadStatus={downloadStatus}
             startDownload={startDownload}
             transferStats={downloadStats}
             abortDownload={abortDownload}
-          ></PeerFiles>
+          ></Peer>
         </div>
       </div>
     </div>
