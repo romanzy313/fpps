@@ -17,7 +17,7 @@
     "paths": {
       "react": ["./node_modules/preact/compat/"],
       "react-dom": ["./node_modules/preact/compat/"],
-      "~/*": ["./web/*"],
+      // "~/*": ["./web/*"],
     },
     // "baseUrl": "./src"
   },

@@ -3,7 +3,7 @@ import { MyFiles } from "../../components/MyFiles";
 import { PeerFiles } from "../../components/PeerFiles";
 import { config } from "../../config";
 import { useRoom } from "../../hooks/useRoom";
-import { PeerConnectionStatus } from "~/core/WebRTC/WebRTCPeerChannelManager";
+import { PeerConnectionStatus } from "../../core/WebRTC/WebRTCPeerChannelManager";
 
 export function Room() {
   // const { value, setValue } = useRoomParams(); // TODO: maybe this is needed to update it?

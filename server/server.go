@@ -16,6 +16,7 @@ type RunOpts struct {
 // TODO: limit body size
 // TODO: set timeouts for requests
 func Run(opts RunOpts) {
+	pubsub := NewPubsub()
 	mailbox := NewMailbox(10, time.Second*30)
 
 	mux := http.NewServeMux()
@@ -27,6 +28,9 @@ func Run(opts RunOpts) {
 	mux.HandleFunc("/api/signaling/send", signalingApi.sendHandler)
 	mux.HandleFunc("/api/signaling/read", signalingApi.readHandler)
 
+	signalingApi2 := NewSignalingApi2(pubsub)
+	mux.HandleFunc("/api/signaling2/", signalingApi2.Handler)
+
 	fileServer := http.FileServer(http.Dir("dist"))
 	mux.Handle("/", fileServer)
 
@@ -35,11 +39,11 @@ func Run(opts RunOpts) {
 		Addr:    fmt.Sprintf(":%d", opts.Port),
 	}
 
-	fmt.Printf("starting serving on port %d", opts.Port)
+	fmt.Printf("starting listening on port %d\n", opts.Port)
 	err := serv.ListenAndServe()
 
 	if err != nil {
-		fmt.Printf("error starting server: %s\n", err)
+		fmt.Printf("listen and server error: %s\n", err)
 		os.Exit(1)
 	}
 }

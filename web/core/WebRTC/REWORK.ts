@@ -18,21 +18,11 @@ import { getIceServers } from "./iceServers";
 
 // use SSE instead!
 export interface Signaling {
-  start(myId: string, peerId: string): void;
+  start(): void;
   stop(): void;
   onMessage(cb: (msg: string) => void): void;
   onError(cb: (err: Error) => void): void;
   send(msg: string): void;
-}
-
-function reworkSignaling() {
-  // get is listen
-  // post is to send. The url is used for the ID.
-  const evtSource = new EventSource("sse-demo.php");
-  evtSource.addEventListener("message", (ev) => {
-    // ev.data -> string type
-  });
-  evtSource.close();
 }
 
 export interface IPeerChannel {
@@ -238,13 +228,13 @@ export class BetterPeerChannel implements IPeerChannel {
 
     this.peer = new Peer({
       enableDataChannels: true,
-      batchCandidates: false,
+      batchCandidates: true,
       config: {
         iceServers: getIceServers("Dev"),
       },
     });
 
-    this.signaler.start(this.opts.myId, this.opts.peerId);
+    this.signaler.start();
 
     this.peer.on("connected", () => {
       console.log("PEER CONNECTED");
@@ -252,6 +242,7 @@ export class BetterPeerChannel implements IPeerChannel {
       this.peer!.addDataChannel("TEST", {
         ordered: true,
         maxRetransmits: undefined,
+        id: 99,
       });
 
       this.setupDataChannel();
@@ -269,14 +260,18 @@ export class BetterPeerChannel implements IPeerChannel {
       this.handleError(err);
     });
 
-    this.signaler.onMessage((data) => {
+    this.signaler.onMessage(async (data) => {
       const { type, value }: UniversalSignal = JSON.parse(data);
 
       if (type === "signal") {
         this.peer!.signal(value);
       } else {
         for (const cand of value) {
-          this.peer!.addIceCandidate(cand);
+          try {
+            await this.peer!.addIceCandidate(cand);
+          } catch (err) {
+            console.warn("addIceCandidate error", err);
+          }
         }
       }
     });
@@ -319,7 +314,8 @@ export class BetterPeerChannel implements IPeerChannel {
     });
 
     this.peer.start({
-      polite: this.opts.isInitiator,
+      // no politeness, as apps start offline
+      // polite: this.opts.isInitiator,
     });
   }
 }

@@ -13,6 +13,7 @@ import { Uploader } from "./Uploader";
 import { Downloader } from "./Downloader";
 import { BetterPeerChannel } from "./WebRTC/REWORK";
 import { SignalingImpl } from "./WebRTC/SignalingNext";
+import { SignalingSSE } from "./WebRTC/SignalingSSE";
 // import * as streamsaver from "streamsaver";
 // import { config } from "../config";
 
@@ -85,14 +86,13 @@ export class Core {
       roomParams,
     });
 
-    const betterPeerChannel = new BetterPeerChannel(
-      new SignalingImpl(roomParams),
-      {
-        isInitiator: roomParams.isInitiator,
-        myId: roomParams.myId,
-        peerId: roomParams.peerId,
-      },
-    );
+    const signaler = new SignalingSSE(roomParams.myId, roomParams.peerId);
+
+    const betterPeerChannel = new BetterPeerChannel(signaler, {
+      isInitiator: roomParams.isInitiator,
+      myId: roomParams.myId,
+      peerId: roomParams.peerId,
+    });
     betterPeerChannel.listenOnMessage((message) => {
       switch (message.type) {
         case "preview-stats":
