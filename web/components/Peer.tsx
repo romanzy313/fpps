@@ -21,18 +21,22 @@ export function Peer({
   const fileCount = peerFiles.totalCount;
   const fileSizeText = formatFileSize(peerFiles.totalBytes);
 
-  function getStatusClass() {
+  function getStatusText() {
+    if (fileCount === 0) {
+      return "Waiting for peer to select files";
+    }
+
     switch (downloadStatus) {
       case "idle":
-        return "transfer-status__state--idle";
+        return "Waiting to start";
       case "transfer":
-        return "transfer-status__state--transfer";
+        return "Downloading...";
       case "done":
-        return "transfer-status__state--done";
+        return "Completed";
       case "aborted":
-        return "transfer-status__state--error";
+        return "Download stopped";
       default:
-        return "transfer-status__state--idle";
+        return "Waiting for peer to upload";
     }
   }
 
@@ -52,12 +56,7 @@ export function Peer({
         </div>
       </div>
 
-      <div className="transfer-status">
-        <div className="transfer-status__title">Download Status</div>
-        <div className={`transfer-status__state ${getStatusClass()}`}>
-          {downloadStatus}
-        </div>
-      </div>
+      <div className="transfer-status-text">{getStatusText()}</div>
 
       <TransferProgress stats={transferStats}></TransferProgress>
 

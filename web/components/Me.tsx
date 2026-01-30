@@ -39,18 +39,22 @@ export function Me({
     addMyFiles(files);
   }
 
-  function getStatusClass() {
+  function getStatusText() {
+    if (fileCount === 0) {
+      return "No files selected";
+    }
+
     switch (uploadStatus) {
       case "idle":
-        return "transfer-status__state--idle";
+        return "Waiting for peer to download";
       case "transfer":
-        return "transfer-status__state--transfer";
+        return "Uploading...";
       case "done":
-        return "transfer-status__state--done";
+        return "Completed";
       case "aborted":
-        return "transfer-status__state--error";
+        return "Upload stopped";
       default:
-        return "transfer-status__state--idle";
+        return "Waiting for peer to download";
     }
   }
 
@@ -70,12 +74,7 @@ export function Me({
         </div>
       </div>
 
-      <div className="transfer-status">
-        <div className="transfer-status__title">Upload Status</div>
-        <div className={`transfer-status__state ${getStatusClass()}`}>
-          {uploadStatus}
-        </div>
-      </div>
+      <div className="transfer-status-text">{getStatusText()}</div>
 
       <TransferProgress stats={transferStats}></TransferProgress>
 

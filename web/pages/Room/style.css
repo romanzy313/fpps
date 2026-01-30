@@ -190,51 +190,11 @@
 }
 
 /* Transfer Status */
-.transfer-status {
-    background-color: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-md);
-    margin-bottom: var(--spacing-md);
-}
-
-.transfer-status__title {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-tertiary);
-    margin-bottom: var(--spacing-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.transfer-status__state {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-xs) var(--spacing-md);
-    border-radius: var(--radius-sm);
+.transfer-status-text {
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-}
-
-.transfer-status__state--idle {
-    background-color: var(--color-bg-elevated);
     color: var(--color-text-secondary);
-}
-
-.transfer-status__state--transfer {
-    background-color: var(--color-info-bg);
-    color: var(--color-info);
-}
-
-.transfer-status__state--done {
-    background-color: var(--color-success-bg);
-    color: var(--color-success);
-}
-
-.transfer-status__state--error {
-    background-color: var(--color-error-bg);
-    color: var(--color-error);
+    margin-bottom: var(--spacing-md);
+    font-weight: var(--font-weight-medium);
 }
 
 /* Transfer Progress */
