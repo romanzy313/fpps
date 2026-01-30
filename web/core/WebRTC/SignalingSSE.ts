@@ -1,9 +1,9 @@
 import { SingleSubscriber } from "../../utils/SingleSubscriber";
-import { Signaling } from "./REWORK";
+import { Signaler } from "./types";
 
-const endpointPath = (userId: string) => `/api/signaling2/${userId}`;
+const endpointPath = (userId: string) => `/api/signaling/${userId}`;
 
-export class SignalingSSE implements Signaling {
+export class SignalingSSE implements Signaler {
   private _onMessage = new SingleSubscriber<(msg: string) => void>();
   private _onError = new SingleSubscriber<(err: Error) => void>();
   private es: EventSource | null = null;

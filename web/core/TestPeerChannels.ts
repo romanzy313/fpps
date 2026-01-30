@@ -1,5 +1,5 @@
 import { PeerMessage, TransferProtocol } from "./PeerChannel";
-import { IPeerChannel } from "./WebRTC/REWORK";
+import { IPeerChannel } from "./WebRTC/types";
 
 const maxBackpressure = 1 << 18; // 256kb
 const drainMs = 10;

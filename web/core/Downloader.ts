@@ -6,7 +6,7 @@ import {
   zeroTransferStats,
 } from "./PeerChannel";
 import { AsyncZipDeflate, Zip } from "fflate/browser";
-import { IPeerChannel } from "./WebRTC/REWORK";
+import { IPeerChannel } from "./WebRTC/types";
 
 export class Downloader {
   status = new ValueSubscriber<TransferStatus>("idle");

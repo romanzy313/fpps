@@ -1,11 +1,6 @@
-import {
-  PeerChannel,
-  PeerMessage,
-  TransferStats,
-  TransferStatus,
-} from "./PeerChannel";
+import { PeerMessage, TransferStats, TransferStatus } from "./PeerChannel";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
-import { IPeerChannel } from "./WebRTC/REWORK";
+import { IPeerChannel } from "./WebRTC/types";
 
 export class Uploader {
   private WRITE_CHUNK_SIZE = 1 << 15; // 32kb

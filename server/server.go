@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"time"
 )
 
 type RunOpts struct {
@@ -16,20 +15,15 @@ type RunOpts struct {
 // TODO: limit body size
 // TODO: set timeouts for requests
 func Run(opts RunOpts) {
-	pubsub := NewPubsub()
-	mailbox := NewMailbox(10, time.Second*30)
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/api/health", healthHandler)
 
-	signalingApi := SignalingApi{mailbox: mailbox}
-	mux.HandleFunc("/api/signaling/send", signalingApi.sendHandler)
-	mux.HandleFunc("/api/signaling/read", signalingApi.readHandler)
-
+	pubsub := NewPubsub()
 	signalingApi2 := NewSignalingApi2(pubsub)
-	mux.HandleFunc("/api/signaling2/", signalingApi2.Handler)
+	mux.HandleFunc("/api/signaling/", signalingApi2.Handler)
 
 	fileServer := http.FileServer(http.Dir("dist"))
 	mux.Handle("/", fileServer)

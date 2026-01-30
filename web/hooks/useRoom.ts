@@ -3,7 +3,7 @@ import { stringifyRoomParams } from "../utils/roomParams";
 
 import { useRoomParams2 } from "./useRoomParams";
 import { Core, emptyPeerFiles, FullFilesState } from "../core/Core";
-import { PeerConnectionStatus } from "../core/WebRTC/WebRTCPeerChannelManager";
+import { PeerConnectionStatus } from "../core/WebRTC/types";
 import {
   TransferStats,
   TransferStatus,

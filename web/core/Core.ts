@@ -1,18 +1,12 @@
 import { RoomParams } from "../utils/roomParams";
 import { secureId } from "../utils/secureId";
 import { ReactiveValue } from "../utils/ReactiveValue";
-import {
-  PeerConnectionStatus,
-  WebRTCPeerChannelManager,
-} from "./WebRTC/WebRTCPeerChannelManager";
+import { PeerConnectionStatus } from "./WebRTC/types";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
-import { getIceServers } from "./WebRTC/iceServers";
-import { PeerChannel } from "./PeerChannel";
 import { parseFile } from "../utils/parseFile";
 import { Uploader } from "./Uploader";
 import { Downloader } from "./Downloader";
-import { BetterPeerChannel } from "./WebRTC/REWORK";
-import { SignalingImpl } from "./WebRTC/SignalingNext";
+import { BetterPeerChannel } from "./WebRTC/BetterPeerChannel";
 import { SignalingSSE } from "./WebRTC/SignalingSSE";
 // import * as streamsaver from "streamsaver";
 // import { config } from "../config";
@@ -107,11 +101,7 @@ export class Core {
       console.log("PEER CHANNEL NEW STATE", {
         status,
       });
-      if (status === "connected" || status === "connecting") {
-        this.connectionState.setValue(status);
-      } else if (status === "permaError") {
-        this.connectionState.setValue("failed"); // TODO
-      }
+      this.connectionState.setValue(status); // TODO
 
       if (status === "connected") {
         this.sendPreviewStats();

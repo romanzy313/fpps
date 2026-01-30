@@ -1,15 +1,15 @@
-export interface PeerChannelSender {
-  isReady(): boolean;
-  backpressureRemainingBytes(): number;
-  sendMessage(message: PeerMessage): void;
-  listenOnDrained(cb: () => void): void; // TODO: return unsub function
-}
+// export interface PeerChannelSender {
+//   isReady(): boolean;
+//   backpressureRemainingBytes(): number;
+//   sendMessage(message: PeerMessage): void;
+//   listenOnDrained(cb: () => void): void; // TODO: return unsub function
+// }
 
-export interface PeerChannelReciever {
-  listenOnMessage(cb: (message: PeerMessage) => void): void;
-}
+// export interface PeerChannelReciever {
+//   listenOnMessage(cb: (message: PeerMessage) => void): void;
+// }
 
-export interface PeerChannel extends PeerChannelSender, PeerChannelReciever {}
+// export interface PeerChannel extends PeerChannelSender, PeerChannelReciever {}
 
 export type TransferStatus = "idle" | "transfer" | "done" | "aborted";
 
@@ -44,6 +44,9 @@ export type PeerMessage =
   | { type: "transfer-done" }
   | { type: "preview-stats"; value: PreviewFileStats };
 
+// TODO: encode it simply with json
+// if first byte starts with "c" -> its a chunk
+// if with "{" -> its arbitrary json
 export class TransferProtocol {
   static encode(message: PeerMessage): Uint8Array {
     function stringify(value: unknown) {

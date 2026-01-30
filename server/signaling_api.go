@@ -1,124 +1,140 @@
 package server
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"time"
 )
 
-type Validatable interface {
-	Validate() error
+type SignalingApi2 struct {
+	pubsub *PubSub
 }
 
-type sendDTO struct {
-	Me       string   `json:"me"`
-	Peer     string   `json:"peer"`
-	Payloads []string `json:"payloads"`
-}
-
-func (d sendDTO) Validate() error {
-	if d.Peer == "" || d.Me == "" || len(d.Payloads) == 0 {
-		return errors.New("malformed values")
+func NewSignalingApi2(pubsub *PubSub) *SignalingApi2 {
+	return &SignalingApi2{
+		pubsub: pubsub,
 	}
-	return nil
 }
 
-type readDTO struct {
-	Me string `json:"me"`
-}
-
-func (d readDTO) Validate() error {
-	if d.Me == "" {
-		return errors.New("invalid data")
+func (s *SignalingApi2) Handler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.getHandler(w, r)
+		return
+	case http.MethodPost:
+		s.postHandler(w, r)
+		return
+	default:
+		writeResponse(w, http.StatusMethodNotAllowed, "expected GET or POST")
+		return
 	}
-	return nil
 }
 
-type responseDTO struct {
-	Payloads []string `json:"payloads"`
+func writeResponse(w http.ResponseWriter, status int, v string) {
+	w.WriteHeader(status)
+	w.Write([]byte(v))
 }
 
-type errorDTO struct {
-	Error string `json:"error"`
+// Extract userId from path like /api/signaling/:userId
+func extractUserId(path string) (string, error) {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+
+	if len(parts) < 3 {
+		return "", fmt.Errorf("invalid path format")
+	}
+
+	userId := parts[len(parts)-1]
+	if userId == "" {
+		return "", fmt.Errorf("userId is empty")
+	}
+
+	return userId, nil
 }
 
-func parseRequest(r *http.Request, v Validatable) error {
+func (s *SignalingApi2) postHandler(w http.ResponseWriter, r *http.Request) {
+	userId, err := extractUserId(r.URL.Path)
+	if err != nil {
+		writeResponse(w, http.StatusBadRequest, "invalid userId in path")
+		return
+	}
+
+	fmt.Printf("SEND   %s\n", userId)
+
+	if !s.pubsub.Has(userId) {
+		writeResponse(w, http.StatusOK, "offline")
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read body: %w", err)
+		writeResponse(w, http.StatusBadRequest, "malformed body")
+		return
 	}
 	defer r.Body.Close()
 
-	if err := json.Unmarshal(body, v); err != nil {
-		return fmt.Errorf("failed to parse JSON: %w", err)
-	}
+	delivered := s.pubsub.Publish(userId, string(body))
 
-	if err := v.Validate(); err != nil {
-		return fmt.Errorf("failed to validate request: %w", err)
-	}
-
-	return nil
-}
-
-func writeResponse(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}
-
-func writeError(w http.ResponseWriter, status int, message string) {
-	if len(message) == 0 {
-		panic("cant reply with empty error")
-	}
-
-	writeResponse(w, status, errorDTO{Error: message})
-}
-
-type SignalingApi struct {
-	mailbox *Mailbox
-}
-
-func (routes *SignalingApi) sendHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, http.StatusMethodNotAllowed, "expected POST")
+	if !delivered {
+		writeResponse(w, http.StatusOK, "offline")
 		return
 	}
 
-	var req sendDTO
-	if err := parseRequest(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	if err := routes.mailbox.Push(req.Peer, req.Payloads); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	payloads := routes.mailbox.ReadAll(req.Me)
-
-	writeResponse(w, http.StatusOK, responseDTO{Payloads: payloads})
-
-	// fmt.Printf("SEND from = %s, to = %s, payloadsSent = %d, payloadsRecieved = %d\n", req.Me, req.Peer, len(req.Payloads), len(payloads))
+	writeResponse(w, http.StatusOK, "ok")
 }
 
-func (routes *SignalingApi) readHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, http.StatusMethodNotAllowed, "expected POST")
+func (s *SignalingApi2) getHandler(w http.ResponseWriter, r *http.Request) {
+	userId, err := extractUserId(r.URL.Path)
+	if err != nil {
+		writeResponse(w, http.StatusBadRequest, "invalid userId in path")
 		return
 	}
 
-	var req readDTO
-	if err := parseRequest(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO
+
+	ch, ok := s.pubsub.Subscribe(userId)
+	if !ok {
+		writeResponse(w, http.StatusBadRequest, "can't subscribe")
+		return
+	}
+	defer s.pubsub.Unsubscribe(userId)
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeResponse(w, http.StatusInternalServerError, "no flusher")
 		return
 	}
 
-	payloads := routes.mailbox.ReadAll(req.Me)
+	keepalive := time.NewTicker(30 * time.Second)
+	defer keepalive.Stop()
 
-	writeResponse(w, http.StatusOK, responseDTO{Payloads: payloads})
+	fmt.Printf("LISTEN %s\n", userId)
 
-	// fmt.Printf("READ from = %s, payloadsRecieved = %d\n", req.Me, len(payloads))
+	for {
+		select {
+		case msg, ok := <-*ch:
+			if !ok {
+				// channel closed
+				return
+			}
+
+			fmt.Fprintf(w, "data: %s\n\n", msg)
+			flusher.Flush()
+
+		case <-keepalive.C:
+			fmt.Printf("LISTEN %s\n", userId)
+			// send keep-alive
+			fmt.Fprintf(w, ": keep-alive\n\n")
+			flusher.Flush()
+
+		case <-r.Context().Done():
+			// cleanup
+			fmt.Printf("LEAVE  %s\n", userId)
+			return
+		}
+	}
 }

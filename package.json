@@ -25,7 +25,6 @@
     "preact": "^10.26.9",
     "preact-iso": "^2.11.0",
     "preact-render-to-string": "^6.6.3",
-    "simple-peer": "^9.11.1",
     "streamsaver": "^2.0.6",
     "typescript": "^5.9.3"
   },
@@ -34,7 +33,6 @@
     "@notwoods/eslint-config-preact": "^1.0.0",
     "@preact/preset-vite": "^2.10.2",
     "@types/node": "^25.0.10",
-    "@types/simple-peer": "^9.11.9",
     "@types/streamsaver": "^2.0.5",
     "@vitejs/plugin-basic-ssl": "^2.1.4",
     "@vitest/coverage-v8": "4.0.14",

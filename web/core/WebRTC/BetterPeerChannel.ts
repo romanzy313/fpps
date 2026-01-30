@@ -1,53 +1,14 @@
-interface BackpressureWriter {
-  // return false when backpressure is encountered
-  // when false is returned, wait for onDrain callback to proceed
-  write(data: Uint8Array): boolean;
-  close(): void;
-
-  readonly canWrite: boolean;
-
-  onDrain: (() => void) | null;
-  onError: ((error: Error) => void) | null;
-}
-
-// import Peer from "simple-peer";
 import Peer from "peer-lite";
 import { PeerMessage, TransferProtocol } from "../PeerChannel";
 import { MultiSubscriber } from "../../utils/MultiSubscriber";
 import { getIceServers } from "./iceServers";
-
-// use SSE instead!
-export interface Signaling {
-  start(): void;
-  stop(): void;
-  onMessage(cb: (msg: string) => void): void;
-  onError(cb: (err: Error) => void): void;
-  send(msg: string): void;
-}
-
-export interface IPeerChannel {
-  isReady(): boolean;
-  hasBackpressure(): boolean;
-  listenOnMessage(cb: (msg: PeerMessage) => void): void;
-  listenOnDrain(cb: () => void): void;
-  listenOnError(cb: (err: Error) => void): void;
-  start(): void;
-  destroy(): void;
-
-  // if true is returned, continue sending
-  // if false is returned, backpressure is encountered. Backoff until drain event
-  write(msg: PeerMessage): boolean;
-}
+import { IPeerChannel, Signaler } from "./types";
 
 type ConnOpts = {
   myId: string;
   peerId: string;
   isInitiator: boolean;
 };
-
-// encode it simply with json
-// if first byte starts with "c" -> its a chunk
-// if with "{" -> its arbitrary json
 
 type UniversalSignal =
   | {
@@ -78,7 +39,7 @@ export class BetterPeerChannel implements IPeerChannel {
   _messageSubscribers = new MultiSubscriber<PeerMessage>();
 
   constructor(
-    private signaler: Signaling,
+    private signaler: Signaler,
     private opts: ConnOpts,
   ) {}
 
@@ -270,7 +231,7 @@ export class BetterPeerChannel implements IPeerChannel {
           try {
             await this.peer!.addIceCandidate(cand);
           } catch (err) {
-            console.warn("addIceCandidate error", err);
+            // console.warn("addIceCandidate error", err);
           }
         }
       }
