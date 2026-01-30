@@ -21,6 +21,8 @@ export class Uploader {
     Uint8Array<ArrayBufferLike>
   > | null = null;
 
+  private isReading = false; // sanity check for bugs
+
   constructor(private peerChannel: IPeerChannel) {
     // peerChannel.listenOnMessage((msg) => {
     //   this.onData(msg);
@@ -124,10 +126,6 @@ export class Uploader {
     if (this.progressInterval) {
       clearInterval(this.progressInterval);
     }
-
-    console.log("Transfer finished", {
-      stats: this.getStats(),
-    });
   }
 
   stop() {
@@ -237,9 +235,17 @@ export class Uploader {
       throw new Error("Expected a reader present");
     }
 
+    if (this.isReading) {
+      // I guess this could happen as the drain may be called at any time
+      console.warn("Concurrent read detected");
+      return;
+    }
+    this.isReading = true;
+
     // console.warn("ON NEXT");
 
     this.reader.read().then(({ value, done }) => {
+      this.isReading = false;
       if (done) {
         // console.log("Done", {
         //   currentIndex: this.currentFileIndex,
@@ -290,10 +296,6 @@ export class Uploader {
       this.next();
     }
   }
-}
-
-function sleep(ms: number) {
-  return new Promise((res) => setTimeout(res, ms));
 }
 
 class ChunkSplitterTransformer implements Transformer<Uint8Array, Uint8Array> {

@@ -58,10 +58,6 @@ class TestPeerChannel implements IPeerChannel {
 
     const shouldContinue = !this.hasBackpressure();
 
-    if (!shouldContinue) {
-      console.log("UNDER BACKPRESSURE");
-    }
-
     return shouldContinue;
   }
 
