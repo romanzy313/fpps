@@ -241,13 +241,6 @@ button:active:not(:disabled) {
     box-shadow: var(--shadow-sm);
 }
 
-button:disabled {
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-disabled);
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
 button.secondary {
     background-color: var(--color-bg-tertiary);
     color: var(--color-text-primary);
@@ -263,6 +256,13 @@ button.danger {
 
 button.danger:hover:not(:disabled) {
     background-color: #dc2626;
+}
+
+button:disabled {
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-disabled);
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 /* Input Fields */

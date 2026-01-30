@@ -87,20 +87,34 @@ export class Downloader {
       );
     }
 
-    this.status.setValue("aborted");
     if (!this.writer) {
       throw new Error("Cannot abort a non-downloading transfer (no writer)");
     }
     if (!this.zip) {
       throw new Error("Cannot abort a non-downloading transfer (no zip)");
     }
+
+    this.status.setValue("aborted");
+
+    // this.resetStatsProgress();
+
     this.zip.terminate();
+    this.zip = null;
+
     await this.writer.abort();
     this.writer = null;
   }
 
   getStats() {
     return this.stats;
+  }
+
+  private resetStatsProgress() {
+    this.stats = {
+      ...this.stats,
+      transferredBytes: 0,
+      currentIndex: 0,
+    };
   }
 
   private onData(message: PeerMessage) {
@@ -153,9 +167,6 @@ export class Downloader {
 
         break;
       case "transfer-stats":
-        // console.log("GOT STATS", {
-        //   value: message.value,
-        // });
         this.stats = message.value;
         break;
       case "transfer-abort":
@@ -166,11 +177,7 @@ export class Downloader {
 
       case "preview-content":
         // files have changed, so reset the UI
-        this.stats = {
-          ...this.stats,
-          transferredBytes: 0,
-          currentIndex: 0,
-        };
+        this.resetStatsProgress();
         this.status.setValue("idle");
         break;
 
