@@ -3,7 +3,6 @@ import { Me } from "../../components/Me";
 import { Peer } from "../../components/Peer";
 import { useRoom } from "../../hooks/useRoom";
 import { PeerStatus } from "../../components/PeerStatus";
-import { ShareCode } from "../../components/ShareCode";
 
 export function Room() {
   const {
@@ -24,10 +23,11 @@ export function Room() {
 
   return (
     <div className="room-container">
-      <PeerStatus status={connectionState} error={null}></PeerStatus>
-      {connectionState !== "connected" ? (
-        <ShareCode code={shareCode}></ShareCode>
-      ) : null}
+      <PeerStatus
+        status={connectionState}
+        error={null}
+        shareCode={shareCode}
+      ></PeerStatus>
       <div className="files-layout">
         <div className="my-files">
           <Me

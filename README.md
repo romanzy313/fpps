@@ -14,6 +14,13 @@ A peer-to-peer file sharing application. Supports two-way uploads using a concep
 
 - WebRPC: peer-to-peer communication
 - Preact frontend for a slim SPA experience
-- Minimal server infrastructure (cloudflare workers): encrypted signaling via http to establish peer to peer connectivity
+- Minimal server infrastructure: encrypted signaling via http/SSE to establish peer to peer connectivity
 - Upload/download folders using [fflate](https://github.com/101arrowz/fflate), for single file download and compression!
-- Using [StreamSaver.js](https://github.com/jimmywarting/StreamSaver.js) library to download files as a writable stream. It has better support support then [saveFilePicker](https://developer.mozilla.org/en-US/docs/Web/API/Window/showSaveFilePicker#browser_compatibility).
+- Using [StreamSaver.js](https://github.com/jimmywarting/StreamSaver.js) library to download files as a writable stream.
+
+## TODOS:
+ - Prevent away navigation during transfer
+ - Style home page
+ - Create an about page (with FAQ)
+ - Style 404 page + make it servable via golang
+ - Handle errors for private WebRTC configurations

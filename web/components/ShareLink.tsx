@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import { config } from "../config";
 
-export function ShareCode({ code }: { code: string }) {
+export function ShareLink({ code }: { code: string }) {
   const [showCopied, setShowCopied] = useState(false);
   const shareLink = `${config.appUrl}/room#${code}`;
 
@@ -15,15 +15,10 @@ export function ShareCode({ code }: { code: string }) {
   }
 
   return (
-    <div className="share-section">
-      <h2 className="share-section__title">Waiting for Peer to Connect</h2>
-      {/*<div className="share-section__code-container">
-        <div className="share-section__code-label">Share Code</div>
-        <div className="share-section__code">{code}</div>
-      </div>*/}
+    <div>
       <div className="share-section__link-container">
         <div className="share-section__link-label">
-          Share the following link to connect with them directly:
+          Share this link to exchange files privately
         </div>
         <div
           className="share-section__link-box"

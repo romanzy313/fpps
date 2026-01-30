@@ -1,12 +1,13 @@
 import { PeerConnectionStatus } from "../core/WebRTC/types";
+import { ShareLink } from "./ShareLink";
 
-export function PeerStatus({
-  status,
-  error,
-}: {
+type Props = {
   status: PeerConnectionStatus;
+  shareCode: string;
   error: Error | null;
-}) {
+};
+
+export function PeerStatus({ status, shareCode, error }: Props) {
   function getText() {
     switch (status) {
       case "connected":
@@ -42,6 +43,11 @@ export function PeerStatus({
       {error ? (
         <div className="peer-status__error">ERROR: {error.message}</div>
       ) : null}
+      {status === "disconnected" && (
+        <div className="peer-status__share">
+          <ShareLink code={shareCode} />
+        </div>
+      )}
     </div>
   );
 }

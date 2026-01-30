@@ -29,6 +29,7 @@ export function Me({
   const [isDraggingFolder, setIsDraggingFolder] = useState(false);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
 
+  // These vibes could be abstracted
   function handleDragOver(e: DragEvent, type: "folder" | "files") {
     e.preventDefault();
     e.stopPropagation();
@@ -169,7 +170,7 @@ export function Me({
         <div className="actions-row">
           <button
             className="secondary"
-            disabled={uploadStatus === "transfer"}
+            disabled={uploadStatus === "transfer" || peerFiles.totalCount === 0}
             onClick={clearFiles}
           >
             Clear Files
