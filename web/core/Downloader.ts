@@ -107,7 +107,6 @@ export class Downloader {
     // console.log("NEW MESSAGE", message);
     switch (message.type) {
       case "transfer-start":
-      case "preview-stats":
         // no-op
         break;
       case "transfer-started":
@@ -159,12 +158,22 @@ export class Downloader {
         // });
         this.stats = message.value;
         break;
-
       case "transfer-abort":
         if (this.status.value === "transfer") {
           this.internalAbort();
         }
         break;
+
+      case "preview-content":
+        // files have changed, so reset the UI
+        this.stats = {
+          ...this.stats,
+          transferredBytes: 0,
+          currentIndex: 0,
+        };
+        this.status.setValue("idle");
+        break;
+
       default:
         throw new Error(`Unknown message type`);
     }

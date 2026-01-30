@@ -54,6 +54,11 @@ export class Uploader {
     };
   }
 
+  private resetStats() {
+    this.currentFileIndex = 0;
+    this.totalProcessedBytes = 0;
+  }
+
   getFiles() {
     return this.files;
   }
@@ -63,6 +68,7 @@ export class Uploader {
       throw new Error("Cannot set files while uploading");
     }
     this.files = files;
+    this.resetStats();
   }
 
   private isAborted() {

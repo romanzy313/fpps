@@ -29,7 +29,7 @@ export function zeroTransferStats(): TransferStats {
   };
 }
 
-export type PreviewFileStats = {
+export type PreviewContent = {
   totalCount: number;
   totalBytes: number;
 };
@@ -42,7 +42,7 @@ export type PeerMessage =
   | { type: "transfer-stats"; value: TransferStats }
   | { type: "transfer-abort" }
   | { type: "transfer-done" }
-  | { type: "preview-stats"; value: PreviewFileStats };
+  | { type: "preview-content"; value: PreviewContent };
 
 // TODO: encode it simply with json
 // if first byte starts with "c" -> its a chunk
@@ -82,7 +82,7 @@ export class TransferProtocol {
         return new TextEncoder().encode("t4");
       case "transfer-done":
         return new TextEncoder().encode("t5");
-      case "preview-stats":
+      case "preview-content":
         return new Uint8Array([
           ...new TextEncoder().encode("p1"),
           ...stringify([message.value.totalCount, message.value.totalBytes]),
@@ -129,7 +129,7 @@ export class TransferProtocol {
       case "p1": {
         const [totalFiles, totalBytes] = json();
         return {
-          type: "preview-stats",
+          type: "preview-content",
           value: { totalCount: totalFiles, totalBytes },
         };
       }

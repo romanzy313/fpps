@@ -8,6 +8,7 @@ import { Uploader } from "./Uploader";
 import { Downloader } from "./Downloader";
 import { BetterPeerChannel } from "./WebRTC/BetterPeerChannel";
 import { SignalingSSE } from "./WebRTC/SignalingSSE";
+import { zeroTransferStats } from "./PeerChannel";
 // import * as streamsaver from "streamsaver";
 // import { config } from "../config";
 
@@ -87,9 +88,10 @@ export class Core {
       myId: roomParams.myId,
       peerId: roomParams.peerId,
     });
+
     betterPeerChannel.listenOnMessage((message) => {
       switch (message.type) {
-        case "preview-stats":
+        case "preview-content":
           this.peerFiles.totalCount = message.value.totalCount;
           this.peerFiles.totalBytes = message.value.totalBytes;
           this.filesReactor.notifyListeners();
@@ -104,7 +106,7 @@ export class Core {
       this.connectionState.setValue(status); // TODO
 
       if (status === "connected") {
-        this.sendPreviewStats();
+        this.sendPreviewContent();
       }
     };
     betterPeerChannel.listenOnError((err) => {
@@ -112,6 +114,7 @@ export class Core {
         this.onError(err);
       }
     });
+
     this.uploader = new Uploader(betterPeerChannel);
     this.downloader = new Downloader(betterPeerChannel);
 
@@ -144,8 +147,10 @@ export class Core {
 
     this.filesReactor.notifyListeners();
 
+    this.uploaderStatus.setValue("idle");
+
     if (this.betterPeerChannel.isReady()) {
-      this.sendPreviewStats();
+      this.sendPreviewContent();
     }
   }
 
@@ -160,7 +165,7 @@ export class Core {
     this.filesReactor.notifyListeners();
 
     if (this.betterPeerChannel.isReady()) {
-      this.sendPreviewStats();
+      this.sendPreviewContent();
     }
   }
 
@@ -180,9 +185,9 @@ export class Core {
     this.uploader.stop();
   }
 
-  private sendPreviewStats() {
+  private sendPreviewContent() {
     this.betterPeerChannel.write({
-      type: "preview-stats",
+      type: "preview-content",
       value: {
         totalCount: this.myFiles.totalCount,
         totalBytes: this.myFiles.totalBytes,

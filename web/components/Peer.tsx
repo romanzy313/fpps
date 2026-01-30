@@ -21,22 +21,20 @@ export function Peer({
   const fileCount = peerFiles.totalCount;
   const fileSizeText = formatFileSize(peerFiles.totalBytes);
 
-  function getStatusText() {
+  function getStatusText(): string {
     if (fileCount === 0) {
       return "Waiting for peer to select files";
     }
 
     switch (downloadStatus) {
       case "idle":
-        return "Waiting to start";
+        return "Waiting to start the download";
       case "transfer":
         return "Downloading...";
       case "done":
         return "Completed";
       case "aborted":
         return "Download stopped";
-      default:
-        return "Waiting for peer to upload";
     }
   }
 

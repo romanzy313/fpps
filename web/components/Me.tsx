@@ -39,22 +39,20 @@ export function Me({
     addMyFiles(files);
   }
 
-  function getStatusText() {
+  function getStatusText(): string {
     if (fileCount === 0) {
       return "No files selected";
     }
 
     switch (uploadStatus) {
       case "idle":
-        return "Waiting for peer to download";
+        return "Waiting for peer to start downloading";
       case "transfer":
         return "Uploading...";
       case "done":
         return "Completed";
       case "aborted":
         return "Upload stopped";
-      default:
-        return "Waiting for peer to download";
     }
   }
 
