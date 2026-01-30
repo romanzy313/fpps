@@ -20,15 +20,10 @@ export function TransferProgress({ stats: transferStats }: Props) {
 
   return (
     <div className="transfer-progress">
-      <div className="transfer-progress__row">
-        <span className="transfer-progress__label">Files:</span>
-        <span className="transfer-progress__value">
-          {transferStats.currentIndex} / {transferStats.totalFiles}
-        </span>
-      </div>
-      <div className="transfer-progress__row">
-        <span className="transfer-progress__label">Data:</span>
-        <span className="transfer-progress__value">
+      <div className="transfer-progress__info">
+        <span className="transfer-progress__percentage">{progressText}</span>
+        <span className="transfer-progress__stats">
+          {transferStats.currentIndex} / {transferStats.totalFiles} files ·{" "}
           {formatFileSize(transferStats.transferredBytes)} /{" "}
           {formatFileSize(transferStats.totalBytes)}
         </span>
@@ -39,7 +34,6 @@ export function TransferProgress({ stats: transferStats }: Props) {
           style={{ width: `${progressRatio * 100}%` }}
         ></div>
       </div>
-      <div className="transfer-progress__percentage">{progressText}</div>
     </div>
   );
 }

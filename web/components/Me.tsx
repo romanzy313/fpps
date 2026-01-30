@@ -75,8 +75,9 @@ export function Me({
         <div className={`transfer-status__state ${getStatusClass()}`}>
           {uploadStatus}
         </div>
-        <TransferProgress stats={transferStats}></TransferProgress>
       </div>
+
+      <TransferProgress stats={transferStats}></TransferProgress>
 
       <div className="file-section__actions">
         <div className="actions-row">

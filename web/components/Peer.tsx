@@ -57,8 +57,9 @@ export function Peer({
         <div className={`transfer-status__state ${getStatusClass()}`}>
           {downloadStatus}
         </div>
-        <TransferProgress stats={transferStats}></TransferProgress>
       </div>
+
+      <TransferProgress stats={transferStats}></TransferProgress>
 
       <div className="file-section__actions">
         <div className="actions-row">
