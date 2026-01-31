@@ -3,12 +3,14 @@ package server
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 )
 
 type RunOpts struct {
-	Port int
+	Port  int
+	Debug bool
 }
 
 // TODO: handle 404 with ugly workaround https://github.com/denpeshkov/greenlight/blob/c68f5a2111adcd5b1a65a06595acc93a02b6380e/internal/http/middleware.go#L16-L71
@@ -22,7 +24,7 @@ func Run(opts RunOpts) {
 	mux.HandleFunc("/api/health", healthHandler)
 
 	pubsub := NewPubsub()
-	signalingApi2 := NewSignalingApi2(pubsub)
+	signalingApi2 := NewSignalingApi2(pubsub, opts.Debug)
 	mux.HandleFunc("/api/signaling/", signalingApi2.Handler)
 
 	fileServer := http.FileServer(http.Dir("dist"))
@@ -33,11 +35,11 @@ func Run(opts RunOpts) {
 		Addr:    fmt.Sprintf(":%d", opts.Port),
 	}
 
-	fmt.Printf("starting listening on port %d\n", opts.Port)
+	log.Printf("starting listening on port %d\n", opts.Port)
 	err := serv.ListenAndServe()
 
 	if err != nil {
-		fmt.Printf("listen and server error: %s\n", err)
+		log.Printf("listen and server error: %s\n", err)
 		os.Exit(1)
 	}
 }

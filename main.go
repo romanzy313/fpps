@@ -7,6 +7,7 @@ func main() {
 	port := 6173
 
 	server.Run(server.RunOpts{
-		Port: port,
+		Port:  port,
+		Debug: true,
 	})
 }
