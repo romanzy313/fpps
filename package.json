@@ -1,5 +1,6 @@
 {
   "name": "fpps",
+  "description": "Free Peer-to-Peer file Sharing application (Real name TBD)",
   "private": true,
   "type": "module",
   "scripts": {
