@@ -8,9 +8,10 @@ import { Uploader } from "./Uploader";
 import { Downloader } from "./Downloader";
 import { BetterPeerChannel } from "./WebRTC/BetterPeerChannel";
 import { SignalingSSE } from "./WebRTC/SignalingSSE";
-import { zeroTransferStats } from "./PeerChannel";
 import { ApplicationError } from "./applicationError";
 import { MultiSubscriber } from "../utils/MultiSubscriber";
+import { EncodeUTF8 } from "fflate/node";
+import { Encryptor } from "../utils/encryption";
 // import * as streamsaver from "streamsaver";
 
 export type FileItem = {
@@ -83,12 +84,9 @@ export class Core {
     });
 
     const signaler = new SignalingSSE(roomParams.myId, roomParams.peerId);
+    const encryptor = new Encryptor(roomParams.secret);
 
-    const betterPeerChannel = new BetterPeerChannel(signaler, {
-      isInitiator: roomParams.isInitiator,
-      myId: roomParams.myId,
-      peerId: roomParams.peerId,
-    });
+    const betterPeerChannel = new BetterPeerChannel(signaler, encryptor);
 
     betterPeerChannel.listenOnMessage((message) => {
       switch (message.type) {

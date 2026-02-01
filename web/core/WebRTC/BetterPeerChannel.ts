@@ -2,14 +2,11 @@ import Peer from "peer-lite";
 import { PeerMessage, TransferProtocol } from "../PeerChannel";
 import { MultiSubscriber } from "../../utils/MultiSubscriber";
 import { getIceServers } from "./iceServers";
-import { IPeerChannel, Signaler } from "./types";
+import { IPeerChannel, PeerConnectionStatus, Signaler } from "./types";
 import { ApplicationError, convertError } from "../applicationError";
+import { Encryptor } from "../../utils/encryption";
 
-type ConnOpts = {
-  myId: string;
-  peerId: string;
-  isInitiator: boolean;
-};
+const RECONNECT_DELAY = 1_000;
 
 type UniversalSignal =
   | {
@@ -35,9 +32,8 @@ export class BetterPeerChannel implements IPeerChannel {
   // value of permaError means that it is a permanent error, cannot be recovered
   // usually means that connection failed to be established due to privacy settings such as
   // disabled WebRTC, or no direction connections are allowed
-  public onConnectionState:
-    | ((state: "error" | "connecting" | "connected") => void)
-    | null = null;
+  public onConnectionState: ((state: PeerConnectionStatus) => void) | null =
+    null;
 
   _errorSubscribers = new MultiSubscriber<ApplicationError>();
 
@@ -45,7 +41,7 @@ export class BetterPeerChannel implements IPeerChannel {
 
   constructor(
     private signaler: Signaler,
-    private opts: ConnOpts,
+    private encryptor: Encryptor,
   ) {}
 
   isReady(): boolean {
@@ -231,8 +227,12 @@ export class BetterPeerChannel implements IPeerChannel {
     this.peer.on("disconnected", () => {
       console.log("PEER DISCONNECTED");
       if (this.onConnectionState) {
-        this.onConnectionState("connecting");
+        this.onConnectionState("disconnected");
       }
+
+      setTimeout(() => {
+        this.restart();
+      }, RECONNECT_DELAY);
     });
 
     this.peer.on("error", (err) => {
@@ -244,14 +244,16 @@ export class BetterPeerChannel implements IPeerChannel {
       this.handleError(err);
     });
 
-    this.signaler.onMessage(async (data) => {
+    this.signaler.onMessage(async (encrypted) => {
       if (!this._isReady) {
         if (this.onConnectionState) {
           this.onConnectionState("connecting");
         }
       }
 
-      const { type, value }: UniversalSignal = JSON.parse(data);
+      const { type, value } = (await this.encryptor.decrypt(
+        encrypted,
+      )) as UniversalSignal;
 
       if (type === "signal") {
         this.peer!.signal(value);
@@ -267,28 +269,26 @@ export class BetterPeerChannel implements IPeerChannel {
       }
     });
 
-    this.peer.on("signal", (signal) => {
+    this.peer.on("signal", async (signal) => {
       const universal: UniversalSignal = {
         type: "signal",
         value: signal,
       };
 
-      this.signaler.send(JSON.stringify(universal));
+      const encrypted = await this.encryptor.encrypt(universal);
+
+      this.signaler.send(encrypted);
     });
-    this.peer.on("onicecandidates", (conds) => {
+    this.peer.on("onicecandidates", async (conds) => {
       const universal: UniversalSignal = {
         type: "candidate",
         value: conds,
       };
-      this.signaler.send(JSON.stringify(universal));
+
+      const encrypted = await this.encryptor.encrypt(universal);
+
+      this.signaler.send(encrypted);
     });
-
-    // this.peer.on("channelOpen", ({ channel: dataChannel }) => {
-    //   if (dataChannel.label !== "TEST") {
-    //     return;
-    //   }
-
-    // });
 
     this.peer.on("channelData", (ev) => {
       if (ev.source !== "incoming") {
@@ -306,7 +306,6 @@ export class BetterPeerChannel implements IPeerChannel {
 
     this.peer.start({
       // no politeness, as apps start offline
-      // polite: this.opts.isInitiator,
     });
   }
 }
