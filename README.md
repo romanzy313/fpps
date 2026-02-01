@@ -20,7 +20,6 @@ A peer-to-peer file sharing application. Supports two-way uploads using a concep
 
 ## TODOS:
  - Prevent away navigation during transfer
- - Style home page
- - Create an about page (with FAQ)
  - Style 404 page + make it servable via golang
  - Handle errors for private WebRTC configurations
+ - provide server URL via env or by browser

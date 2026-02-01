@@ -26,6 +26,7 @@ export default defineConfig([
         { argsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/no-explicit-any": "warn",
+      "react/no-unescaped-entities": "off",
       // "no-console": "warn",
     },
   },
