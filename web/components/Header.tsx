@@ -6,11 +6,11 @@ export function Header() {
   return (
     <header>
       <nav>
-        <a href="/" className={url == "/" ? "" : "active"}>
+        <a href="/" className={url === "/" ? "active" : ""}>
           Home
         </a>
-        <a href="/404" className={url == "/404" ? "" : "active"}>
-          404
+        <a href="/about" className={url === "/about" ? "active" : ""}>
+          About
         </a>
       </nav>
     </header>

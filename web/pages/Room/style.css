@@ -1,5 +1,4 @@
 .room-container {
-    max-width: var(--max-width-container);
     margin: 0 auto;
     padding: var(--spacing-xl);
 }

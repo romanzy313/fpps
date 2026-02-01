@@ -1,8 +1,10 @@
 export function NotFound() {
   return (
-    <section>
-      <h1>404: Not Found</h1>
-      <p>It&apos;s gone :(</p>
+    <section style={{ textAlign: "center" }}>
+      <h1>Page not found</h1>
+      <p>
+        <a href="/">Go home</a>
+      </p>
     </section>
   );
 }

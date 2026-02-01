@@ -1,4 +1,5 @@
 import "./style.css";
+
 import { secureId } from "../../utils/secureId";
 import { useLocation } from "preact-iso";
 import { isValidRoomHash, stringifyRoomParams } from "../../utils/roomParams";
@@ -41,7 +42,7 @@ export function Home() {
   }
 
   return (
-    <div className="home-container">
+    <div className="container-slim home-container">
       {/* Hero Section */}
       <section className="home-hero">
         <h1 className="home-hero__title">Fast Peer-to-Peer File Sharing</h1>

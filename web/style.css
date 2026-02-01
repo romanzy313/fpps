@@ -86,7 +86,6 @@
     --z-tooltip: 3000;
 
     /* Layout */
-    --max-width-container: 1280px;
     --header-height: 3.5rem;
 
     font-family: var(--font-family-base);
@@ -156,7 +155,6 @@ header a:hover {
 
 main {
     display: flex;
-    max-width: var(--max-width-container);
     margin: 0 auto;
     width: 100%;
     flex: 1;
@@ -166,6 +164,14 @@ main .container {
     width: 100%;
     padding: var(--spacing-xl);
     margin: 0 auto;
+    max-width: 1200px;
+}
+
+main .container-slim {
+    width: 100%;
+    padding: var(--spacing-xl);
+    margin: 0 auto;
+    max-width: 800px;
 }
 
 @media (max-width: 768px) {
