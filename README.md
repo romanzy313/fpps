@@ -24,3 +24,4 @@ A peer-to-peer file sharing application. Supports two-way uploads using a concep
  - Handle errors for private WebRTC configurations
  - Errors dont display as such
  - Abrupt disconnect messes up error handling (stuck at transferring)
+ - Currupted file transfers?
