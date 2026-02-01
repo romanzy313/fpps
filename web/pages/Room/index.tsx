@@ -19,13 +19,15 @@ export function Room() {
     downloadStats,
     uploadStatus,
     uploadStats,
+    error,
+    clearError,
   } = useRoom();
 
   return (
     <div className="room-container">
       <PeerStatus
         status={connectionState}
-        error={null}
+        error={error}
         shareCode={shareCode}
       ></PeerStatus>
       <div className="files-layout">

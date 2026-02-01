@@ -3,6 +3,8 @@ import { PeerMessage, TransferProtocol } from "../PeerChannel";
 import { MultiSubscriber } from "../../utils/MultiSubscriber";
 import { getIceServers } from "./iceServers";
 import { IPeerChannel, Signaler } from "./types";
+import { ApplicationError, convertError } from "../applicationError";
+import { EventEmitterAsyncResource } from "node:events";
 
 type ConnOpts = {
   myId: string;
@@ -26,15 +28,17 @@ export class BetterPeerChannel implements IPeerChannel {
   private peer: Peer | null = null;
   private dataChannel: RTCDataChannel | null = null;
   private _isReady = false; // I dont like this
-  private _destroyed = false;
+  private _intentionallyStopped = false;
+  private _errored = false;
   private onDrain: (() => void) | null = null;
   // value of permaError means that it is a permanent error, cannot be recovered
   // usually means that connection failed to be established due to privacy settings such as
   // disabled WebRTC, or no direction connections are allowed
   public onConnectionState:
-    | ((state: "permaError" | "connecting" | "connected") => void)
+    | ((state: "error" | "connecting" | "connected") => void)
     | null = null;
-  public onError: ((err: Error) => void) | null = null;
+
+  _errorSubscribers = new MultiSubscriber<ApplicationError>();
 
   _messageSubscribers = new MultiSubscriber<PeerMessage>();
 
@@ -53,11 +57,19 @@ export class BetterPeerChannel implements IPeerChannel {
   listenOnDrain(cb: () => void) {
     this.onDrain = cb;
   }
-  listenOnError(cb: (err: Error) => void) {
-    this.onError = cb;
-  }
+  listenOnError = this._errorSubscribers.subscribe;
+  // listenOnError(cb: (err: Error) => void) {
+  //   this.onError = cb;
+  // }
 
   start() {
+    if (this._errored) {
+      throw new Error("Cannot start when errored");
+    }
+
+    this._reset();
+    this._intentionallyStopped = false;
+
     this.restart();
 
     // setInterval(() => {
@@ -66,6 +78,11 @@ export class BetterPeerChannel implements IPeerChannel {
     //     readyState: this.dataChannel?.readyState,
     //   });
     // }, 3000);
+  }
+
+  stop() {
+    this._reset();
+    this._intentionallyStopped = true;
   }
 
   hasBackpressure(): boolean {
@@ -99,30 +116,24 @@ export class BetterPeerChannel implements IPeerChannel {
     return continueWriting;
   }
 
-  private permanentError() {
-    if (this.onConnectionState) {
-      this.onConnectionState("permaError");
-    }
+  private handleError(anyError: unknown) {
+    const applicationError = convertError(anyError);
 
-    this.destroy();
-  }
+    this._errorSubscribers.notify(applicationError);
 
-  private handleError(err: Error) {
-    if (this.onError) {
-      this.onError(err);
-    }
+    if (applicationError.fatal) {
+      if (this.onConnectionState) {
+        this.onConnectionState("error");
+      }
 
-    const isPerma = err.message.includes("PERMANENT");
-
-    if (isPerma) {
-      this.permanentError();
+      this._errored = true;
+      this._reset();
     } else {
       this.restart();
     }
   }
 
-  destroy() {
-    this._destroyed = true;
+  private _reset() {
     this._isReady = false;
     this.signaler.stop();
 
@@ -130,6 +141,12 @@ export class BetterPeerChannel implements IPeerChannel {
     this.dataChannel = null;
     this.peer?.destroy();
     this.peer = null;
+  }
+
+  // TODO: need to have a function to fully disconnect and cleanup
+  // no reconnections!
+  dispose() {
+    throw new Error("TODO");
   }
 
   private setupDataChannel() {
@@ -156,8 +173,8 @@ export class BetterPeerChannel implements IPeerChannel {
         dataChannel: dataChannel,
       });
 
-      // FIXME: dont restart when close is desired
-      if (!this._destroyed) {
+      // TODO: make sure this works
+      if (!this._intentionallyStopped) {
         this.restart();
       }
     });
@@ -180,20 +197,29 @@ export class BetterPeerChannel implements IPeerChannel {
   }
 
   private restart() {
-    this.destroy();
+    if (this._errored) {
+      throw new Error("Cannot restart as rtc is errored");
+    }
 
-    this._destroyed = false; // hhh
+    this._reset();
+
     if (this.onConnectionState) {
       this.onConnectionState("connecting");
     }
 
-    this.peer = new Peer({
-      enableDataChannels: true,
-      batchCandidates: true,
-      config: {
-        iceServers: getIceServers("Dev"),
-      },
-    });
+    try {
+      this.peer = new Peer({
+        enableDataChannels: true,
+        batchCandidates: true,
+        config: {
+          iceServers: getIceServers("Dev"),
+        },
+      });
+    } catch (err) {
+      this.handleError(err);
+
+      return;
+    }
 
     this.signaler.start();
 
@@ -231,7 +257,8 @@ export class BetterPeerChannel implements IPeerChannel {
           try {
             await this.peer!.addIceCandidate(cand);
           } catch (err) {
-            // console.warn("addIceCandidate error", err);
+            // notmal due to async candidate exchange
+            console.warn("addIceCandidate error", err);
           }
         }
       }
@@ -271,7 +298,7 @@ export class BetterPeerChannel implements IPeerChannel {
 
       // console.log("RECIEVED A MESSAGE", { decoded, data, ev });
 
-      this._messageSubscribers.notifyListeners(decoded);
+      this._messageSubscribers.notify(decoded);
     });
 
     this.peer.start({

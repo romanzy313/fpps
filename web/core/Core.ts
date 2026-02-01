@@ -9,6 +9,8 @@ import { Downloader } from "./Downloader";
 import { BetterPeerChannel } from "./WebRTC/BetterPeerChannel";
 import { SignalingSSE } from "./WebRTC/SignalingSSE";
 import { zeroTransferStats } from "./PeerChannel";
+import { ApplicationError } from "./applicationError";
+import { MultiSubscriber } from "../utils/MultiSubscriber";
 // import * as streamsaver from "streamsaver";
 // import { config } from "../config";
 
@@ -39,7 +41,7 @@ export class Core {
   private betterPeerChannel: BetterPeerChannel;
   // this should be a signal?
   connectionState = new ValueSubscriber<PeerConnectionStatus>("disconnected");
-  onError: ((err: Error) => void) | null = null;
+  error = new MultiSubscriber<ApplicationError>();
 
   private uploader: Uploader;
   private downloader: Downloader;
@@ -77,7 +79,7 @@ export class Core {
   }));
 
   constructor(roomParams: RoomParams) {
-    console.log("intializing new core", {
+    console.log("intializing core", {
       roomParams,
     });
 
@@ -100,7 +102,7 @@ export class Core {
       }
     });
     betterPeerChannel.onConnectionState = (status) => {
-      console.log("PEER CHANNEL NEW STATE", {
+      console.log("PEER CHANNEL STATE", {
         status,
       });
       this.connectionState.setValue(status); // TODO
@@ -110,25 +112,26 @@ export class Core {
       }
     };
     betterPeerChannel.listenOnError((err) => {
-      if (this.onError) {
-        this.onError(err);
-      }
+      this.error.notify(err);
     });
 
     this.uploader = new Uploader(betterPeerChannel);
     this.downloader = new Downloader(betterPeerChannel);
 
-    betterPeerChannel.start();
+    setTimeout(() => {
+      betterPeerChannel.start();
+    });
 
     this.betterPeerChannel = betterPeerChannel;
   }
 
   public dispose() {
-    this.betterPeerChannel.destroy();
+    this.betterPeerChannel.stop();
     this.filesReactor.dispose();
     this.connectionState.dispose();
     this.uploader.dispose();
     this.downloader.dispose();
+    this.error.dispose();
   }
 
   // public functions

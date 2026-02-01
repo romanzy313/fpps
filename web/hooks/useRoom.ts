@@ -9,6 +9,7 @@ import {
   TransferStatus,
   zeroTransferStats,
 } from "../core/PeerChannel";
+import { applicationErrorToText } from "../core/applicationError";
 
 const STATS_UPDATE_INTERVAL_MS = 500;
 
@@ -19,6 +20,7 @@ export function useRoom() {
   const [core, setCore] = useState<Core | null>(null);
   const [connectionState, setConnectionState] =
     useState<PeerConnectionStatus>("disconnected");
+  const [error, setError] = useState("");
 
   const [myFiles, setMyFiles] = useState<FullFilesState>(emptyPeerFiles());
   const [peerFiles, setPeerFiles] = useState<FullFilesState>(emptyPeerFiles());
@@ -58,8 +60,17 @@ export function useRoom() {
     newCore.downloaderStatus.subscribe((status) => {
       setDownloadStatus(status);
     });
+    newCore.error.subscribe((value) => {
+      if (value.fatal) {
+        const text = applicationErrorToText(value);
+        setError(text);
+      } else {
+        console.error("ERROR OCCURED TOAST", value);
+      }
+    });
 
     // query stats every 500 ms
+    // TODO: this is bad
     const stopInterval = setInterval(() => {
       setDownloadStats(newCore.downloadStatsValue());
       setUploadStats(newCore.uploadStatsValue());
@@ -74,6 +85,10 @@ export function useRoom() {
       clearInterval(stopInterval);
     };
   }, [roomParams]);
+
+  function clearError() {
+    setError("");
+  }
 
   const addMoreFiles = useCallback(
     (files: File[]) => {
@@ -113,6 +128,8 @@ export function useRoom() {
     uploadStatus,
     downloadStats,
     uploadStats,
+    error,
+    clearError,
   };
 }
 

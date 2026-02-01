@@ -1,10 +1,11 @@
+import { ApplicationError } from "../applicationError";
 import { PeerMessage } from "../PeerChannel";
 
 export type PeerConnectionStatus =
   | "disconnected"
   | "connecting"
   | "connected"
-  | "permaError";
+  | "error";
 
 export interface Signaler {
   start(): void;
@@ -19,9 +20,9 @@ export interface IPeerChannel {
   hasBackpressure(): boolean;
   listenOnMessage(cb: (msg: PeerMessage) => void): void;
   listenOnDrain(cb: () => void): void;
-  listenOnError(cb: (err: Error) => void): void;
+  listenOnError(cb: (err: ApplicationError) => void): void;
   start(): void;
-  destroy(): void;
+  stop(): void;
 
   // if true is returned, continue sending
   // if false is returned, backpressure is encountered. Backoff until drain event

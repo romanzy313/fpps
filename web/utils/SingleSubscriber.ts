@@ -2,8 +2,10 @@
 export class SingleSubscriber<T extends (...args: any) => void> {
   private _cb: T | null = null;
 
-  subscribe = (cb: T): void => {
+  subscribe = (cb: T): (() => void) => {
     this._cb = cb;
+
+    return this.unsubscribe;
   };
 
   subscribeOnce = (cb: T): void => {
@@ -13,19 +15,25 @@ export class SingleSubscriber<T extends (...args: any) => void> {
     this._cb = cb;
   };
 
-  notify(...args: Parameters<T>): boolean {
+  unsubscribe = () => {
+    if (this._cb) {
+      this._cb = null;
+    }
+  };
+
+  notify = (...args: Parameters<T>): boolean => {
     if (!this._cb) {
       return false;
     }
 
     this._cb(...args);
     return true;
-  }
+  };
 
-  notifyMust(...args: Parameters<T>): void {
+  notifyMust = (...args: Parameters<T>): void => {
     if (!this._cb) {
       throw new Error("Not subscribed");
     }
     this._cb(...args);
-  }
+  };
 }

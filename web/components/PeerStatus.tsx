@@ -4,11 +4,11 @@ import { ShareLink } from "./ShareLink";
 type Props = {
   status: PeerConnectionStatus;
   shareCode: string;
-  error: Error | null;
+  error: string;
 };
 
 export function PeerStatus({ status, shareCode, error }: Props) {
-  function getText() {
+  function getText(): string {
     switch (status) {
       case "connected":
         return "Peer is connected";
@@ -16,12 +16,12 @@ export function PeerStatus({ status, shareCode, error }: Props) {
         return "Connecting to peer...";
       case "disconnected":
         return "Waiting for peer";
-      default:
-        return "";
+      case "error":
+        return "Connection failure";
     }
   }
 
-  function getIndicatorClass() {
+  function getIndicatorClass(): string {
     switch (status) {
       case "connected":
         return "peer-status__indicator--connected";
@@ -29,8 +29,8 @@ export function PeerStatus({ status, shareCode, error }: Props) {
         return "peer-status__indicator--connecting";
       case "disconnected":
         return "peer-status__indicator--disconnected";
-      default:
-        return "";
+      case "error":
+        return "peer-status__indicator--error";
     }
   }
 
@@ -40,9 +40,8 @@ export function PeerStatus({ status, shareCode, error }: Props) {
         <div className={`peer-status__indicator ${getIndicatorClass()}`}></div>
         <div className="peer-status__text">{getText()}</div>
       </div>
-      {error ? (
-        <div className="peer-status__error">ERROR: {error.message}</div>
-      ) : null}
+      {error && <div className="peer-status__error">{error}</div>}
+
       {status === "disconnected" && (
         <div className="peer-status__share">
           <ShareLink code={shareCode} />

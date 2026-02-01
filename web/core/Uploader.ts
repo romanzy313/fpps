@@ -21,7 +21,7 @@ export class Uploader {
     Uint8Array<ArrayBufferLike>
   > | null = null;
 
-  private isReading = false; // sanity check for bugs
+  private isReading = false;
 
   constructor(private peerChannel: IPeerChannel) {
     // peerChannel.listenOnMessage((msg) => {
@@ -29,9 +29,6 @@ export class Uploader {
     // });
     peerChannel.listenOnMessage(this.onData.bind(this));
     peerChannel.listenOnDrain(this.onDrain.bind(this));
-    peerChannel.listenOnError((err) => {
-      console.error("UPLOADER GOT ERROR", err);
-    });
   }
 
   // TODO: for some reason this does not count duplicate file bytes

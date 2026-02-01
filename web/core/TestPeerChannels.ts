@@ -1,3 +1,4 @@
+import { ApplicationError } from "./applicationError";
 import { PeerMessage, TransferProtocol } from "./PeerChannel";
 import { IPeerChannel } from "./WebRTC/types";
 
@@ -22,7 +23,7 @@ class TestPeerChannel implements IPeerChannel {
     this._ready = true;
   }
 
-  destroy(): void {
+  stop(): void {
     this._ready = false;
   }
 
@@ -69,7 +70,7 @@ class TestPeerChannel implements IPeerChannel {
     this._onDataCallback = cb;
   }
 
-  listenOnError(_: (err: Error) => void): void {
+  listenOnError(_: (err: ApplicationError) => void): void {
     //
   }
 }
