@@ -105,30 +105,6 @@ export function Home() {
           </div>
         </div>
       </div>
-
-      {/* Features */}
-      <section className="home-features">
-        <div className="feature">
-          <div className="feature__icon">🔒</div>
-          <h3 className="feature__title">Secure</h3>
-          <p className="feature__description">End-to-end encrypted</p>
-        </div>
-        <div className="feature">
-          <div className="feature__icon">⚡</div>
-          <h3 className="feature__title">Fast</h3>
-          <p className="feature__description">Direct peer-to-peer transfers</p>
-        </div>
-        <div className="feature">
-          <div className="feature__icon">🌐</div>
-          <h3 className="feature__title">No Limits</h3>
-          <p className="feature__description">Share files of any size</p>
-        </div>
-        <div className="feature">
-          <div className="feature__icon">🎯</div>
-          <h3 className="feature__title">Simple</h3>
-          <p className="feature__description">No signup or installation</p>
-        </div>
-      </section>
     </div>
   );
 }

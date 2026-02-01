@@ -168,7 +168,8 @@ main {
 
 @media (max-width: 768px) {
     main .container {
-        padding: var(--spacing-md);
+        padding-left: var(--spacing-md);
+        padding-right: var(--spacing-md);
     }
 }
 
