@@ -1,21 +1,20 @@
 import { faqs } from "./faqs";
 import "./style.css";
-import { useState } from "preact/hooks";
 
 interface FAQItemProps {
   question: string;
   answer: string | preact.ComponentChildren;
-  isOpen: boolean;
-  onToggle: () => void;
+  id: string;
 }
 
-function FAQItem({ question, answer, isOpen, onToggle }: FAQItemProps) {
+function FAQItem({ question, answer, id }: FAQItemProps) {
   return (
-    <div className={`faq-item ${isOpen ? "faq-item--open" : ""}`}>
-      <button className="faq-item__question" onClick={onToggle}>
+    <div className="faq-item">
+      <input type="checkbox" id={id} className="faq-item__checkbox" />
+      <label htmlFor={id} className="faq-item__question">
         <span className="faq-item__question-text">{question}</span>
         <span className="faq-item__icon">▼</span>
-      </button>
+      </label>
       <div className="faq-item__answer">
         <div className="faq-item__answer-content">{answer}</div>
       </div>
@@ -24,14 +23,8 @@ function FAQItem({ question, answer, isOpen, onToggle }: FAQItemProps) {
 }
 
 export default function AboutPage() {
-  const [openFAQ, setOpenFAQ] = useState<number | null>(null);
-
-  const toggleFAQ = (index: number) => {
-    setOpenFAQ(openFAQ === index ? null : index);
-  };
-
   return (
-    <div className="container-slim about-container">
+    <div className="about-container container">
       {/* Main Content */}
       <div className="about-content">
         <section className="about-section">
@@ -129,10 +122,9 @@ export default function AboutPage() {
           {faqs.map((faq, index) => (
             <FAQItem
               key={index}
+              id={`faq-${index}`}
               question={faq.question}
               answer={faq.answer}
-              isOpen={openFAQ === index}
-              onToggle={() => toggleFAQ(index)}
             />
           ))}
         </div>

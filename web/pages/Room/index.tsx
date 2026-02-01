@@ -21,11 +21,10 @@ export function Room() {
     uploadStatus,
     uploadStats,
     error,
-    clearError,
   } = useRoom();
 
   return (
-    <div className="room-container">
+    <div className="room-container container">
       <PeerStatus
         status={connectionState}
         error={error}

@@ -1,6 +1,7 @@
 .about-container {
     padding-top: var(--spacing-2xl);
     padding-bottom: var(--spacing-2xl);
+    max-width: 800px;
 }
 
 /* Header Section */
@@ -126,8 +127,9 @@
     border-color: var(--color-border-hover);
 }
 
-.faq-item--open {
-    border-color: var(--color-accent);
+/* Hide the checkbox */
+.faq-item__checkbox {
+    display: none;
 }
 
 .faq-item__question {
@@ -137,20 +139,17 @@
     justify-content: space-between;
     gap: var(--spacing-md);
     padding: var(--spacing-lg) var(--spacing-xl);
-    background-color: transparent;
-    border: none;
     cursor: pointer;
     text-align: left;
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text-primary);
     transition: all var(--transition-fast);
-    min-height: auto;
+    user-select: none;
 }
 
 .faq-item__question:hover {
     background-color: var(--color-bg-hover);
-    box-shadow: none;
 }
 
 .faq-item__question-text {
@@ -170,9 +169,18 @@
     font-size: var(--font-size-xl);
 }
 
-.faq-item--open .faq-item__icon {
+/* When checkbox is checked */
+.faq-item__checkbox:checked + .faq-item__question {
+    background-color: var(--color-bg-hover);
+}
+
+.faq-item__checkbox:checked + .faq-item__question .faq-item__icon {
     transform: rotate(180deg);
     color: var(--color-accent);
+}
+
+.faq-item__checkbox:checked ~ .faq-item__answer {
+    max-height: 1000px;
 }
 
 .faq-item__answer {
@@ -181,12 +189,9 @@
     transition: max-height var(--transition-slow);
 }
 
-.faq-item--open .faq-item__answer {
-    max-height: 1000px;
-}
-
 .faq-item__answer-content {
-    padding: 0 var(--spacing-xl) var(--spacing-lg) var(--spacing-xl);
+    /*padding: 0 var(--spacing-xl) var(--spacing-lg) var(--spacing-xl);*/
+    padding: var(--spacing-lg) var(--spacing-xl);
     font-size: var(--font-size-base);
     color: var(--color-text-secondary);
     line-height: var(--line-height-relaxed);

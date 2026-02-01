@@ -42,10 +42,10 @@ export function Home() {
   }
 
   return (
-    <div className="container-slim home-container">
+    <div className="home-container container">
       {/* Hero Section */}
       <section className="home-hero">
-        <h1 className="home-hero__title">Fast Peer-to-Peer File Sharing</h1>
+        <h1 className="home-hero__title">Free Peer-to-Peer File Sharing</h1>
         <p className="home-hero__subtitle">
           Share files directly between browsers. No servers, no limits.
         </p>

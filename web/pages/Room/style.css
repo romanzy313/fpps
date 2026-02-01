@@ -1,6 +1,7 @@
 .room-container {
     margin: 0 auto;
     padding: var(--spacing-xl);
+    max-width: 1260px;
 }
 
 /* Peer Status */

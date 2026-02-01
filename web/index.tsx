@@ -19,14 +19,12 @@ export function App() {
     <LocationProvider>
       <Header />
       <main>
-        <div className="container">
-          <Router>
-            <Route path="/" component={Home} />
-            <Route path="/room" component={Room} />
-            <Route path="/about" component={About} />
-            <Route default component={NotFound} />
-          </Router>
-        </div>
+        <Router>
+          <Route path="/" component={Home} />
+          <Route path="/room" component={Room} />
+          <Route path="/about" component={About} />
+          <Route default component={NotFound} />
+        </Router>
       </main>
     </LocationProvider>
   );

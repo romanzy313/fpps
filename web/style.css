@@ -160,18 +160,10 @@ main {
     flex: 1;
 }
 
-main .container {
+.container {
     width: 100%;
     padding: var(--spacing-xl);
     margin: 0 auto;
-    max-width: 1200px;
-}
-
-main .container-slim {
-    width: 100%;
-    padding: var(--spacing-xl);
-    margin: 0 auto;
-    max-width: 800px;
 }
 
 @media (max-width: 768px) {
