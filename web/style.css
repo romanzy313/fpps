@@ -226,18 +226,16 @@ button {
     align-items: center;
     justify-content: center;
     gap: var(--spacing-sm);
-    min-height: 2.5rem;
+    min-height: 3rem;
 }
 
 button:hover:not(:disabled) {
     background-color: var(--color-accent-hover);
-    transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
 
 button:active:not(:disabled) {
     background-color: var(--color-accent-active);
-    transform: translateY(0);
     box-shadow: var(--shadow-sm);
 }
 
@@ -370,4 +368,18 @@ em {
 ::selection {
     background-color: var(--color-accent);
     color: var(--color-text-primary);
+}
+
+/* Custom components */
+
+.card {
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    transition: border-color var(--transition-base);
+}
+
+.card:hover {
+    border-color: var(--color-border-hover);
 }

@@ -165,18 +165,9 @@
 
 /* File Section (Me & Peer) */
 .file-section {
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
     display: flex;
     flex-direction: column;
-    transition: border-color var(--transition-base);
     height: 100%;
-}
-
-.file-section:hover {
-    border-color: var(--color-border-hover);
 }
 
 .file-section__header {

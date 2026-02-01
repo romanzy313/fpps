@@ -58,7 +58,7 @@ export function Home() {
       {/* Action Cards */}
       <div className="home-actions">
         {/* Create Room Card */}
-        <div className="home-card">
+        <div className="card home-card">
           <div className="home-card__header">
             <h2 className="home-card__title">Create a New Room</h2>
             <p className="home-card__description">
@@ -78,7 +78,7 @@ export function Home() {
         </div>
 
         {/* Join Room Card */}
-        <div className="home-card">
+        <div className="card home-card">
           <div className="home-card__header">
             <h2 className="home-card__title">Join Existing Room</h2>
             <p className="home-card__description">
@@ -87,21 +87,16 @@ export function Home() {
           </div>
           <div className="home-card__content">
             <form className="join-form" onSubmit={onJoin}>
-              <div className="join-form__input-wrapper">
-                <label className="join-form__label" htmlFor="room-code">
-                  Room Code
-                </label>
-                <input
-                  id="room-code"
-                  className="join-form__input"
-                  type="text"
-                  placeholder="Paste room code here..."
-                  autoComplete="off"
-                  autoCorrect="off"
-                  // eslint-disable-next-line react/no-unknown-property
-                  spellcheck={false}
-                />
-              </div>
+              <input
+                id="room-code"
+                className="join-form__input"
+                type="text"
+                placeholder="Paste room code here..."
+                autoComplete="off"
+                autoCorrect="off"
+                // eslint-disable-next-line react/no-unknown-property
+                spellcheck={false}
+              />
               <button className="join-form__button" type="submit">
                 Join Room
               </button>

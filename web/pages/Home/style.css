@@ -55,20 +55,9 @@
 }
 
 .home-card {
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
-    transition: all var(--transition-base);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
-}
-
-.home-card:hover {
-    border-color: var(--color-border-hover);
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
 }
 
 .home-card__header {
@@ -92,13 +81,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-}
-
-.home-card__button {
-    width: 100%;
-    font-size: var(--font-size-lg);
-    padding: var(--spacing-md) var(--spacing-xl);
-    min-height: 3rem;
 }
 
 /* Divider */
@@ -171,10 +153,6 @@
     border-color: var(--color-border-focus);
     background-color: var(--color-bg-elevated);
     box-shadow: 0 0 0 3px rgba(90, 95, 245, 0.1);
-}
-
-.join-form__button {
-    width: 100%;
 }
 
 /* Features Section */

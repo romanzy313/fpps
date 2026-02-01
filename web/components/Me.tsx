@@ -101,7 +101,7 @@ export function Me({
   }
 
   return (
-    <div className="file-section">
+    <div className="card file-section">
       <div className="file-section__header">
         <h2 className="file-section__title">My Files</h2>
         <div className="file-section__summary">
