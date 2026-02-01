@@ -1,12 +1,9 @@
 import "./style.css";
-import { useState } from "preact/hooks";
-import { config } from "../../config";
 import { secureId } from "../../utils/secureId";
 import { useLocation } from "preact-iso";
 import { isValidRoomHash, stringifyRoomParams } from "../../utils/roomParams";
 
 export function Home() {
-  const [error, setError] = useState("");
   const { route } = useLocation();
 
   function startRoom() {
@@ -25,12 +22,9 @@ export function Home() {
   }
 
   return (
-    <div className="home">
-      {/*<script src="/steamsaver/StreamSaver.js"></script>
-      <script src="/streamsaver/sw.js"></script>*/}
-      <h1>Home Page</h1>
-
-      <div style={{ height: "100px" }}></div>
+    <div className="">
+      <h1>Some title here</h1>
+      <div>Some text too?</div>
       <div>
         <button onClick={startRoom}>Create a room</button>
       </div>
@@ -48,7 +42,6 @@ export function Home() {
               elem.value = "";
               return;
             }
-            // TODO: validate the code
             route(`/room#${code}`);
           }}
         >
