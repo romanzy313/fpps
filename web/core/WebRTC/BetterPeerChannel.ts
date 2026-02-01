@@ -4,7 +4,6 @@ import { MultiSubscriber } from "../../utils/MultiSubscriber";
 import { getIceServers } from "./iceServers";
 import { IPeerChannel, Signaler } from "./types";
 import { ApplicationError, convertError } from "../applicationError";
-import { EventEmitterAsyncResource } from "node:events";
 
 type ConnOpts = {
   myId: string;
@@ -27,9 +26,11 @@ type UniversalSignal =
 export class BetterPeerChannel implements IPeerChannel {
   private peer: Peer | null = null;
   private dataChannel: RTCDataChannel | null = null;
-  private _isReady = false; // I dont like this
-  private _intentionallyStopped = false;
-  private _errored = false;
+
+  // there are too many flags here
+  private _isReady = false; // can data be sent?
+  private _errored = false; // did critical error occur
+
   private onDrain: (() => void) | null = null;
   // value of permaError means that it is a permanent error, cannot be recovered
   // usually means that connection failed to be established due to privacy settings such as
@@ -68,7 +69,6 @@ export class BetterPeerChannel implements IPeerChannel {
     }
 
     this._reset();
-    this._intentionallyStopped = false;
 
     this.restart();
 
@@ -82,7 +82,6 @@ export class BetterPeerChannel implements IPeerChannel {
 
   stop() {
     this._reset();
-    this._intentionallyStopped = true;
   }
 
   hasBackpressure(): boolean {
@@ -151,15 +150,14 @@ export class BetterPeerChannel implements IPeerChannel {
 
   private setupDataChannel() {
     const dataChannel = this.peer!.getDataChannel("TEST")!;
-    console.log("PEER CHANNEL OPEN", {
-      dataChannel,
-    });
 
     dataChannel.binaryType = "arraybuffer";
     dataChannel.bufferedAmountLowThreshold = 1 << 20; // 1mb
 
     dataChannel.addEventListener("open", () => {
-      console.log("DATACHANNEL OPENED");
+      console.log("DATACHANNEL OPENED", {
+        dataChannel,
+      });
       this._isReady = true;
       if (this.onConnectionState) {
         this.onConnectionState("connected");
@@ -170,21 +168,15 @@ export class BetterPeerChannel implements IPeerChannel {
 
     dataChannel.addEventListener("close", () => {
       console.error("DATACHANNEL CLOSED", {
-        dataChannel: dataChannel,
+        dataChannel,
       });
-
-      // TODO: make sure this works
-      if (!this._intentionallyStopped) {
-        this.restart();
-      }
     });
     dataChannel.addEventListener("error", (ev) => {
       console.error("DATACHANNEL ERROR", {
         error: ev.error,
       });
 
-      // is this correct?
-      // this.restart();
+      // no reconnect here?
     });
 
     dataChannel.addEventListener("bufferedamountlow", () => {
@@ -203,9 +195,10 @@ export class BetterPeerChannel implements IPeerChannel {
 
     this._reset();
 
-    if (this.onConnectionState) {
-      this.onConnectionState("connecting");
-    }
+    // if (this.onConnectionState && !this._first) {
+    //   // reconnecting...
+    //   this.onConnectionState("connecting");
+    // }
 
     try {
       this.peer = new Peer({
@@ -236,18 +229,28 @@ export class BetterPeerChannel implements IPeerChannel {
     });
 
     this.peer.on("disconnected", () => {
-      // TODO: careful!
       console.log("PEER DISCONNECTED");
+      if (this.onConnectionState) {
+        this.onConnectionState("connecting");
+      }
     });
 
     this.peer.on("error", (err) => {
+      console.log("PEER ERROR");
       this.handleError(new Error(err.message));
     });
     this.signaler.onError((err) => {
+      console.log("SIGNALING ERROR", { err });
       this.handleError(err);
     });
 
     this.signaler.onMessage(async (data) => {
+      if (!this._isReady) {
+        if (this.onConnectionState) {
+          this.onConnectionState("connecting");
+        }
+      }
+
       const { type, value }: UniversalSignal = JSON.parse(data);
 
       if (type === "signal") {

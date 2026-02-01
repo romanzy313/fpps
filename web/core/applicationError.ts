@@ -1,9 +1,9 @@
-type ApplicationKnownError = "webrtc_disabled";
+type ApplicationKnownError = "webrtc_disabled" | "server_error";
 
 export type ApplicationError =
   | {
       fatal: boolean;
-      message: ApplicationKnownError;
+      type: ApplicationKnownError;
     }
   | {
       fatal: true;
@@ -12,15 +12,16 @@ export type ApplicationError =
 
 const translation: Record<ApplicationKnownError, string> = {
   webrtc_disabled: "WebRTC is diabled in your browser",
+  server_error: "Server error",
 } as const;
 
 export function applicationErrorToText(value: ApplicationError): string {
   if (!value.fatal) {
-    return translation[value.message];
+    return translation[value.type];
   }
 
-  if ("message" in value) {
-    return translation[value.message];
+  if ("type" in value) {
+    return translation[value.type];
   }
 
   return `Unexpected error ${value.unhandledMessage}`;
@@ -34,11 +35,17 @@ export function convertError(err: unknown): ApplicationError {
     ) {
       return {
         fatal: true,
-        message: "webrtc_disabled",
+        type: "webrtc_disabled",
+      };
+    }
+    if (err.name === "ApiError") {
+      return {
+        fatal: true,
+        type: "server_error",
       };
     }
 
-    console.error("unproccessed error", { err });
+    console.error("unproccessed error", err);
 
     return {
       fatal: true,
@@ -46,7 +53,7 @@ export function convertError(err: unknown): ApplicationError {
     };
   }
 
-  console.error("really really bad error", { err });
+  console.error("really really bad error", err);
 
   return {
     fatal: true,

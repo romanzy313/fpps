@@ -48,8 +48,9 @@ export class SignalingSSE implements Signaler {
   }
 
   private async _send(msg: string) {
+    const url = endpointPath(this.peerId);
     try {
-      const res = await fetch(endpointPath(this.peerId), {
+      const res = await fetch(url, {
         method: "POST",
         body: msg,
       });
@@ -57,16 +58,30 @@ export class SignalingSSE implements Signaler {
       const body = await res.text();
 
       if (!res.ok) {
-        this._onError.notify(new Error(body));
+        if (res.status >= 400) {
+          this._onError.notify(
+            new ApiError(`${res.statusText}${body ? ": " + body : ""}`),
+          );
+        } else {
+          console.log("unexpected error", { body, code: res.status });
+          this._onError.notify(new Error(body));
+        }
       }
     } catch (err) {
       if (err instanceof Error) {
         // network errors mostly, or 500 from server
-        this._onError.notify(new Error(err.message));
+        this._onError.notify(err);
       } else {
         // something is too wrong
         throw err;
       }
     }
+  }
+}
+
+class ApiError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ApiError";
   }
 }

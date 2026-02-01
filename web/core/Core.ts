@@ -101,6 +101,7 @@ export class Core {
           break;
       }
     });
+
     betterPeerChannel.onConnectionState = (status) => {
       console.log("PEER CHANNEL STATE", {
         status,
