@@ -6,7 +6,6 @@ function ssrRoomParams(): RoomParams {
     peerId: "",
     myId: "",
     secret: "",
-    isInitiator: false,
   };
 }
 

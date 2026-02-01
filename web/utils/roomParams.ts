@@ -1,15 +1,14 @@
 export type RoomParams = {
   peerId: string;
   myId: string;
-  secret: string; // TODO: use for encryption
-  isInitiator: boolean;
+  secret: string;
 };
 
 export function isValidRoomHash(hash: string) {
   try {
     const params = parseRoomParams(hash);
 
-    if (params.myId === "" || params.peerId === "") {
+    if (!params.myId || !params.peerId || !params.secret) {
       return false;
     }
 
@@ -19,65 +18,30 @@ export function isValidRoomHash(hash: string) {
   }
 }
 
-export function parseRoomParams(hash: string) {
+export function parseRoomParams(str: string) {
   const value: RoomParams = {
     peerId: "",
     myId: "",
     secret: "",
-    isInitiator: true,
   };
 
-  const parts = hash.split(";");
+  const myIdMatch = str.match(/m:([^;]+)/);
+  const peerIdMatch = str.match(/p:([^;]+)/);
+  const secretMatch = str.match(/s:([^;]+)/);
 
-  for (const part of parts) {
-    const [key, partValue] = part.split(":");
-
-    if (partValue === undefined) {
-      throw new Error("No value for key " + key);
-    }
-
-    switch (key) {
-      case "p":
-        value.peerId = partValue;
-        break;
-      case "m":
-        value.myId = partValue;
-        break;
-      case "s":
-        value.secret = partValue;
-        break;
-      case "i":
-        if (partValue !== "1" && partValue !== "0") {
-          throw new Error(`Invalid value for initiator: ${partValue}`);
-        }
-        value.isInitiator = partValue === "1";
-        break;
-      default:
-        throw new Error(
-          `Unknown key: ${key}. PartValue: ${partValue}. Hash: ${hash}`,
-        );
-    }
+  if (myIdMatch) {
+    value.myId = myIdMatch[1] ?? "";
+  }
+  if (peerIdMatch) {
+    value.peerId = peerIdMatch[1] ?? "";
+  }
+  if (secretMatch) {
+    value.secret = secretMatch[1] ?? "";
   }
 
   return value;
 }
 
 export function stringifyRoomParams(value: RoomParams) {
-  const parts = [
-    `p:${value.peerId}`,
-    `m:${value.myId}`,
-    `s:${value.secret}`,
-    `i:${value.isInitiator ? "1" : "0"}`,
-  ];
-
-  return parts.join(";");
-}
-
-/**
- *
- * @deprecated Use route() instead
- */
-export function setUrlRoomParams(value: RoomParams) {
-  const str = stringifyRoomParams(value);
-  window.history.replaceState(null, "", `#${str}`);
+  return `m:${value.myId};p:${value.peerId};s:${value.secret}`;
 }

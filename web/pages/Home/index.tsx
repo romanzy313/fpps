@@ -10,13 +10,12 @@ export function Home() {
   function startRoom() {
     const myId = secureId();
     const peerId = secureId();
-    const secret = "";
+    const secret = secureId();
 
     const hashValue = stringifyRoomParams({
       myId,
       peerId,
       secret,
-      isInitiator: true,
     });
 
     route(`/room#${hashValue}`);

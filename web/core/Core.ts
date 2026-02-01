@@ -12,7 +12,6 @@ import { zeroTransferStats } from "./PeerChannel";
 import { ApplicationError } from "./applicationError";
 import { MultiSubscriber } from "../utils/MultiSubscriber";
 // import * as streamsaver from "streamsaver";
-// import { config } from "../config";
 
 export type FileItem = {
   path: string;

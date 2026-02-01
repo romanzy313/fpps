@@ -1,9 +1,12 @@
 import { useState } from "preact/hooks";
-import { config } from "../config";
+import { getBaseUrl } from "../utils/getBaseUrl";
 
 export function ShareLink({ code }: { code: string }) {
   const [showCopied, setShowCopied] = useState(false);
-  const shareLink = `${config.appUrl}/room#${code}`;
+
+  const baseUrl = getBaseUrl();
+
+  const shareLink = `${baseUrl}/room#${code}`;
 
   function copyToClipboard() {
     navigator.clipboard.writeText(shareLink).then(() => {

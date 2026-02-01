@@ -112,7 +112,7 @@
     text-decoration: underline;
     cursor: pointer;
     transition: all var(--transition-fast);
-    max-width: 100%;
+    max-width: 800px;
     overflow-wrap: break-word;
 }
 
