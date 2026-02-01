@@ -42,7 +42,7 @@ export function PeerStatus({ status, shareCode, error }: Props) {
       </div>
       {error && <div className="peer-status__error">{error}</div>}
 
-      {status === "disconnected" && (
+      {status === "disconnected" && !error && (
         <div className="peer-status__share">
           <ShareLink code={shareCode} />
         </div>

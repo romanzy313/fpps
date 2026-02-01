@@ -5,17 +5,13 @@ export type RoomParams = {
 };
 
 export function isValidRoomHash(hash: string) {
-  try {
-    const params = parseRoomParams(hash);
+  const params = parseRoomParams(hash);
 
-    if (!params.myId || !params.peerId || !params.secret) {
-      return false;
-    }
-
-    return true;
-  } catch {
+  if (!params.myId || !params.peerId || !params.secret) {
     return false;
   }
+
+  return true;
 }
 
 export function parseRoomParams(str: string) {

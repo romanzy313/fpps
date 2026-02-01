@@ -25,7 +25,7 @@ export class BetterPeerChannel implements IPeerChannel {
   private dataChannel: RTCDataChannel | null = null;
 
   // there are too many flags here
-  private _isReady = false; // can data be sent?
+  private _isReady = false; // can data be sent? this is not too reliable for now
   private _errored = false; // did critical error occur
 
   private onDrain: (() => void) | null = null;
@@ -67,13 +67,6 @@ export class BetterPeerChannel implements IPeerChannel {
     this._reset();
 
     this.restart();
-
-    // setInterval(() => {
-    //   console.log("STATUS REPORT", {
-    //     status: this.peer?.status(),
-    //     readyState: this.dataChannel?.readyState,
-    //   });
-    // }, 3000);
   }
 
   stop() {
@@ -82,7 +75,8 @@ export class BetterPeerChannel implements IPeerChannel {
 
   hasBackpressure(): boolean {
     if (!this.dataChannel) {
-      throw new Error("Assertion failed: no dataChannel");
+      return false;
+      // throw new Error("Assertion failed: no dataChannel");
     }
     const remaining =
       this.dataChannel.bufferedAmountLowThreshold -
@@ -93,12 +87,16 @@ export class BetterPeerChannel implements IPeerChannel {
 
   write(msg: PeerMessage): boolean {
     if (!this.dataChannel) {
-      throw new Error("Assertion failed: no dataChannel");
+      return false;
+      // throw new Error("Assertion failed: no dataChannel");
     }
 
+    // FIXME: handle this as an error!
     if (this.dataChannel.readyState !== "open") {
+      this.handleError(new Error("connection_interrupted"));
       console.error("dataChannel", { dataChannel: this.dataChannel });
-      throw new Error("Assertion failed: dataChannel is not open");
+      return false;
+      // throw new Error("Assertion failed: dataChannel is not open");
     }
 
     const encoded = TransferProtocol.encode(msg);
@@ -186,7 +184,8 @@ export class BetterPeerChannel implements IPeerChannel {
 
   private restart() {
     if (this._errored) {
-      throw new Error("Cannot restart as rtc is errored");
+      return;
+      // throw new Error("Cannot restart as rtc is errored");
     }
 
     this._reset();

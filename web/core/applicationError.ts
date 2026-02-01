@@ -1,4 +1,7 @@
-type ApplicationKnownError = "webrtc_disabled" | "server_error";
+type ApplicationKnownError =
+  | "webrtc_disabled"
+  | "server_error"
+  | "connection_interrupted";
 
 export type ApplicationError =
   | {
@@ -13,6 +16,7 @@ export type ApplicationError =
 const translation: Record<ApplicationKnownError, string> = {
   webrtc_disabled: "WebRTC is diabled in your browser",
   server_error: "Server error",
+  connection_interrupted: "Connection to peer was interrupted",
 } as const;
 
 export function applicationErrorToText(value: ApplicationError): string {
@@ -24,7 +28,7 @@ export function applicationErrorToText(value: ApplicationError): string {
     return translation[value.type];
   }
 
-  return `Unexpected error ${value.unhandledMessage}`;
+  return `Unexpected error: ${value.unhandledMessage}`;
 }
 
 export function convertError(err: unknown): ApplicationError {
@@ -42,6 +46,12 @@ export function convertError(err: unknown): ApplicationError {
       return {
         fatal: true,
         type: "server_error",
+      };
+    }
+    if (err.message === "connection_interrupted") {
+      return {
+        fatal: true,
+        type: "connection_interrupted",
       };
     }
 

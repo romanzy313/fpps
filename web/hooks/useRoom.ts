@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { stringifyRoomParams } from "../utils/roomParams";
 
-import { useRoomParams2 } from "./useRoomParams";
+import { useRoomParams } from "./useRoomParams";
 import { Core, emptyPeerFiles, FullFilesState } from "../core/Core";
 import { PeerConnectionStatus } from "../core/WebRTC/types";
 import {
@@ -10,11 +10,12 @@ import {
   zeroTransferStats,
 } from "../core/PeerChannel";
 import { applicationErrorToText } from "../core/applicationError";
+import { usePreventNavigation } from "./usePreventNavigation";
 
 const STATS_UPDATE_INTERVAL_MS = 500;
 
 export function useRoom() {
-  const roomParams = useRoomParams2();
+  const roomParams = useRoomParams();
   const [shareCode, setShareCode] = useState<string>("");
 
   const [core, setCore] = useState<Core | null>(null);
@@ -33,6 +34,18 @@ export function useRoom() {
   const [downloadStats, setDownloadStats] =
     useState<TransferStats>(zeroTransferStats());
 
+  const [isTransferring, setIsTransferring] = useState(false);
+  useEffect(() => {
+    setIsTransferring(
+      downloadStatus === "transfer" || uploadStatus === "transfer",
+    );
+  }, [downloadStatus, uploadStatus]);
+
+  usePreventNavigation(
+    "A transfer is in progress? Leaving this page will interrupt file sharing.",
+    isTransferring,
+  );
+
   useEffect(() => {
     const newCore = new Core(roomParams);
     setCore(newCore);
@@ -42,7 +55,6 @@ export function useRoom() {
         myId: roomParams.peerId,
         peerId: roomParams.myId,
         secret: roomParams.secret,
-        isInitiator: !roomParams.isInitiator,
       }),
     );
 
@@ -75,10 +87,6 @@ export function useRoom() {
       setDownloadStats(newCore.downloadStatsValue());
       setUploadStats(newCore.uploadStatsValue());
     }, STATS_UPDATE_INTERVAL_MS);
-
-    // if (typeof window !== "undefined") {
-    //   window.
-    // }
 
     return () => {
       newCore.dispose();

@@ -103,7 +103,13 @@ export class Core {
       console.log("PEER CHANNEL STATE", {
         status,
       });
-      this.connectionState.setValue(status); // TODO
+      if (this.connectionState.value === "error") {
+        // hacky hack: "ignore everything after error"
+        return;
+      }
+
+      // TODO: refactor to not use values
+      this.connectionState.setValue(status);
 
       if (status === "connected") {
         this.sendPreviewContent();

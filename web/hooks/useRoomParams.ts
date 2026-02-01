@@ -9,7 +9,7 @@ function ssrRoomParams(): RoomParams {
   };
 }
 
-export function useRoomParams2() {
+export function useRoomParams() {
   if (typeof window === "undefined") {
     return ssrRoomParams();
   }

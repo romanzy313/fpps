@@ -68,10 +68,6 @@ export class Uploader {
     this.resetStats();
   }
 
-  private isAborted() {
-    return this.status.value === "aborted";
-  }
-
   private flushTransferChunks(): boolean {
     if (this.writeBufferPos > 0) {
       // console.log("FLUSHING TRANSFER CHUNKS, size", this.writeBufferPos);
