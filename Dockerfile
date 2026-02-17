@@ -29,19 +29,13 @@ COPY . .
 COPY --from=web /app/dist ./dist
 
 # no dependencies :)
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo main.go
+RUN go build main.go
 
 # Deploy it
 FROM scratch AS deploy
 
 WORKDIR /app
 
-# temp
-COPY --from=web /app/dist ./dist
-
 COPY --from=builder /app/main ./server
 
-
 CMD ["./server"]
-
-# Debug in a temp alpine stage to verify

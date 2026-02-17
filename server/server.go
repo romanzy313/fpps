@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 type RunOpts struct {
 	Port  int
+	Fs    fs.FS
 	Debug bool
 }
 
@@ -27,7 +29,7 @@ func Run(opts RunOpts) {
 	signalingApi2 := NewSignalingApi2(pubsub, opts.Debug)
 	mux.HandleFunc("/api/signaling/", signalingApi2.Handler)
 
-	fileServer := http.FileServer(http.Dir("dist"))
+	fileServer := http.FileServerFS(opts.Fs)
 	mux.Handle("/", fileServer)
 
 	serv := &http.Server{
