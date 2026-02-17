@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --mode development --host",
     "dev:test": "vitest",
-    "build:web": "vite build",
+    "dev:docker": "docker build --progress plain -t fpps . && docker run -e PORT=6173 -p 6173:6173 fpps",
+    "build": "vite build",
     "test": "vitest --run --coverage",
     "preview": "vite preview",
     "lint": "eslint",
