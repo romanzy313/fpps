@@ -35,11 +35,11 @@ func Run(opts RunOpts) {
 		Addr:    fmt.Sprintf(":%d", opts.Port),
 	}
 
-	log.Printf("starting listening on port %d\n", opts.Port)
+	log.Printf("FPPS server is listening on port %d\n", opts.Port)
 	err := serv.ListenAndServe()
 
 	if err != nil {
-		log.Printf("listen and server error: %s\n", err)
+		log.Printf("server listen and serve error: %s\n", err)
 		os.Exit(1)
 	}
 }

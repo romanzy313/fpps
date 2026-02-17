@@ -1,10 +1,18 @@
 package main
 
-import "ffps/server"
+import (
+	"ffps/server"
+	"os"
+	"strconv"
+)
 
 func main() {
-	// TODO: port from env
-	port := 6173
+	var port int
+	if os.Getenv("PORT") != "" {
+		port, _ = strconv.Atoi(os.Getenv("PORT"))
+	} else {
+		port = 3000
+	}
 
 	server.Run(server.RunOpts{
 		Port:  port,
