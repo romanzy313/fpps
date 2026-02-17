@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 type RunOpts struct {
@@ -15,7 +16,6 @@ type RunOpts struct {
 	Debug bool
 }
 
-// TODO: handle 404 with ugly workaround https://github.com/denpeshkov/greenlight/blob/c68f5a2111adcd5b1a65a06595acc93a02b6380e/internal/http/middleware.go#L16-L71
 // TODO: limit body size
 // TODO: set timeouts for requests
 func Run(opts RunOpts) {
@@ -29,8 +29,7 @@ func Run(opts RunOpts) {
 	signalingApi2 := NewSignalingApi2(pubsub, opts.Debug)
 	mux.HandleFunc("/api/signaling/", signalingApi2.Handler)
 
-	fileServer := http.FileServerFS(opts.Fs)
-	mux.Handle("/", fileServer)
+	mux.Handle("/", serveFilesWith404Handling(opts.Fs))
 
 	serv := &http.Server{
 		Handler: mux,
@@ -48,4 +47,20 @@ func Run(opts RunOpts) {
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "OK")
+}
+
+func serveFilesWith404Handling(fs fs.FS) http.Handler {
+	fileServer := http.FileServerFS(fs)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		_, err := fs.Open(path)
+
+		if os.IsNotExist(err) {
+			// serve 404 prerender
+			// trailing slashes are annoyances of std lib...
+			r.URL.Path = "/404/"
+		}
+		fileServer.ServeHTTP(w, r)
+	})
 }
