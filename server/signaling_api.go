@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -11,13 +10,11 @@ import (
 
 type SignalingApi2 struct {
 	pubsub *PubSub
-	debug  bool
 }
 
-func NewSignalingApi2(pubsub *PubSub, debug bool) *SignalingApi2 {
+func NewSignalingApi2(pubsub *PubSub) *SignalingApi2 {
 	return &SignalingApi2{
 		pubsub: pubsub,
-		debug:  debug,
 	}
 }
 
@@ -43,7 +40,6 @@ func (s *SignalingApi2) postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !s.pubsub.Has(userId) {
-		s.debugf("SEND   %s: OFFLINE\n", userId)
 		s.writeResponse(w, http.StatusOK, "offline")
 		return
 	}
@@ -54,9 +50,6 @@ func (s *SignalingApi2) postHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-
-	s.debugf("SEND   %s\n", userId)
-	// s.debugf("SEND   %s: %s\n", userId, string(body))
 
 	delivered := s.pubsub.Publish(userId, string(body))
 
@@ -96,8 +89,6 @@ func (s *SignalingApi2) getHandler(w http.ResponseWriter, r *http.Request) {
 	keepalive := time.NewTicker(30 * time.Second)
 	defer keepalive.Stop()
 
-	s.debugf("LISTEN %s\n", userId)
-
 	for {
 		select {
 		case msg, ok := <-*ch:
@@ -110,32 +101,18 @@ func (s *SignalingApi2) getHandler(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 
 		case <-keepalive.C:
-			s.debugf("LISTEN %s\n", userId)
 			// send keep-alive
 			fmt.Fprintf(w, ": keep-alive\n\n")
 			flusher.Flush()
 
 		case <-r.Context().Done():
 			// cleanup
-			s.debugf("LEAVE  %s\n", userId)
 			return
 		}
 	}
 }
 
-func (s *SignalingApi2) debugf(format string, a ...any) {
-	if !s.debug {
-		return
-	}
-
-	log.Printf(format, a...)
-}
-
 func (s *SignalingApi2) writeResponse(w http.ResponseWriter, status int, v string) {
-	if status >= 400 {
-		s.debugf("Error response: [%d]: %s", status, v)
-	}
-
 	w.WriteHeader(status)
 	w.Write([]byte(v))
 }

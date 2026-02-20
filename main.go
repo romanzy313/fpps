@@ -25,8 +25,7 @@ func main() {
 	}
 
 	server.Run(server.RunOpts{
-		Port:  port,
-		Fs:    Fs,
-		Debug: true,
+		Port: port,
+		Fs:   Fs,
 	})
 }

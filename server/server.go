@@ -11,9 +11,8 @@ import (
 )
 
 type RunOpts struct {
-	Port  int
-	Fs    fs.FS
-	Debug bool
+	Port int
+	Fs   fs.FS
 }
 
 // TODO: limit body size
@@ -26,7 +25,7 @@ func Run(opts RunOpts) {
 	mux.HandleFunc("/api/health", healthHandler)
 
 	pubsub := NewPubsub()
-	signalingApi2 := NewSignalingApi2(pubsub, opts.Debug)
+	signalingApi2 := NewSignalingApi2(pubsub)
 	mux.HandleFunc("/api/signaling/", signalingApi2.Handler)
 
 	mux.Handle("/", serveFilesWith404Handling(opts.Fs))
