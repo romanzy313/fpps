@@ -12,13 +12,27 @@ export class Downloader {
   status = new ValueSubscriber<TransferStatus>("idle");
   private stats: TransferStats = zeroTransferStats();
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
-  private zip: Zip | null = null;
-  private deflate: AsyncZipDeflate | null = null;
 
   constructor(private peerChannel: IPeerChannel) {
     peerChannel.listenOnMessage((msg) => {
       this.onData(msg);
     });
+  }
+
+  getStats() {
+    return this.stats;
+  }
+
+  private resetStatsProgress() {
+    this.stats = {
+      ...this.stats,
+      transferredBytes: 0,
+      currentIndex: 0,
+    };
+  }
+
+  private isAborted() {
+    return this.status.value === "aborted";
   }
 
   start(writableStream: WritableStream<Uint8Array>) {
@@ -40,39 +54,6 @@ export class Downloader {
     this.stats = zeroTransferStats();
     this.writer = writableStream.getWriter();
     this.peerChannel.write({ type: "transfer-start" });
-    this.zip = new Zip((err, data, done) => {
-      // console.log("zip callback", { err, byteLen: data?.byteLength, done });
-      if (!this.writer) {
-        throw new Error("Assertion failed: writer cant be null");
-      }
-      if (err) {
-        this.writer.abort();
-        this.writer = null;
-        this.deflate = null;
-        this.zip = null;
-        // when terminate is called this is an expected behavior?
-        // this.status.setValue("aborted") // ???
-        throw new Error(`Zip error: ${err.message}`);
-      }
-
-      this.writer.write(data);
-
-      if (done) {
-        // console.log("ZIP SAID ITS DONE");
-        this.writer.close().then(() => {
-          // console.log("CLOSED WRITER");
-          // cleanup code here
-          this.writer = null;
-          this.zip = null;
-          this.deflate = null;
-          this.status.setValue("done");
-        });
-      }
-    });
-  }
-
-  private isAborted() {
-    return this.status.value === "aborted";
   }
 
   async abort() {
@@ -87,34 +68,23 @@ export class Downloader {
       );
     }
 
+    this.status.setValue("aborted");
+
     if (!this.writer) {
       throw new Error("Cannot abort a non-downloading transfer (no writer)");
     }
-    if (!this.zip) {
-      throw new Error("Cannot abort a non-downloading transfer (no zip)");
-    }
-
-    this.status.setValue("aborted");
-
-    // this.resetStatsProgress();
-
-    this.zip.terminate();
-    this.zip = null;
 
     await this.writer.abort();
     this.writer = null;
   }
 
-  getStats() {
-    return this.stats;
-  }
-
-  private resetStatsProgress() {
-    this.stats = {
-      ...this.stats,
-      transferredBytes: 0,
-      currentIndex: 0,
-    };
+  private async done() {
+    this.status.setValue("done");
+    if (!this.writer) {
+      throw new Error("Cannot complete a transfer without a writer");
+    }
+    await this.writer.close();
+    this.writer = null;
   }
 
   private onData(message: PeerMessage) {
@@ -126,22 +96,7 @@ export class Downloader {
       case "transfer-started":
         this.status.setValue("transfer");
         break;
-      case "transfer-next-file":
-        {
-          if (!this.zip) {
-            throw new Error("Assertion error: zip undefined on next file");
-          }
-          if (this.deflate) {
-            this.deflate.push(new Uint8Array(), true);
-          }
 
-          const deflate = new AsyncZipDeflate(message.name, {
-            level: 4,
-          });
-          this.zip.add(deflate);
-          this.deflate = deflate;
-        }
-        break;
       case "transfer-chunk":
         if (this.isAborted()) {
           return;
@@ -149,21 +104,14 @@ export class Downloader {
         if (this.status.value !== "transfer") {
           throw new Error("Cannot receive a chunk while not downloading");
         }
-        if (!this.zip || !this.deflate) {
-          throw new Error("Cannot receive a chunk without a zip and deflate");
+
+        if (!this.writer) {
+          throw new Error("Cannot receive a chunk without a writer");
         }
-        this.deflate.push(message.value);
+        this.writer.write(message.value);
         break;
       case "transfer-done":
-        if (!this.zip) {
-          throw new Error("Assertion failed: this zip must be defined");
-        }
-        if (this.deflate) {
-          this.deflate.push(new Uint8Array(), true);
-        }
-
-        // console.log("TRANSFER IS DONE, ENDING ZIP");
-        this.zip.end();
+        this.done();
 
         break;
       case "transfer-stats":

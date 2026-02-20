@@ -82,7 +82,7 @@ export class BetterPeerChannel implements IPeerChannel {
       this.dataChannel.bufferedAmountLowThreshold -
       this.dataChannel.bufferedAmount;
 
-    return remaining < 0;
+    return remaining <= 0;
   }
 
   write(msg: PeerMessage): boolean {
