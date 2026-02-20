@@ -38,7 +38,9 @@ export function PeerStatus({ status, shareCode, error }: Props) {
     <div className="peer-status">
       <div className="peer-status__content">
         <div className={`peer-status__indicator ${getIndicatorClass()}`}></div>
-        <div className="peer-status__text">{getText()}</div>
+        <div className="peer-status__text" data-testid="peer-status-text">
+          {getText()}
+        </div>
       </div>
       {error && <div className="peer-status__error">{error}</div>}
 

@@ -107,16 +107,31 @@ export function Me({
         <div className="file-section__summary">
           <div className="file-section__summary-item">
             <span className="file-section__summary-label">Files:</span>
-            <span className="file-section__summary-value">{fileCount}</span>
+            <span
+              data-testid="my-file-count"
+              className="file-section__summary-value"
+            >
+              {fileCount}
+            </span>
           </div>
           <div className="file-section__summary-item">
             <span className="file-section__summary-label">Size:</span>
-            <span className="file-section__summary-value">{fileSizeText}</span>
+            <span
+              data-testid="my-file-size"
+              className="file-section__summary-value"
+            >
+              {fileSizeText}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="transfer-status-text">{getStatusText()}</div>
+      <div
+        data-testid="my-transfer-status-text"
+        className="transfer-status-text"
+      >
+        {getStatusText()}
+      </div>
 
       <TransferProgress stats={transferStats}></TransferProgress>
 
@@ -159,6 +174,7 @@ export function Me({
             >
               <input
                 id="upload-files"
+                data-testid="upload-files-input"
                 type="file"
                 disabled={!canUploadFiles}
                 multiple

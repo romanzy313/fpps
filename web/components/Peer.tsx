@@ -45,16 +45,31 @@ export function Peer({
         <div className="file-section__summary">
           <div className="file-section__summary-item">
             <span className="file-section__summary-label">Files:</span>
-            <span className="file-section__summary-value">{fileCount}</span>
+            <span
+              data-testid="peer-file-count"
+              className="file-section__summary-value"
+            >
+              {fileCount}
+            </span>
           </div>
           <div className="file-section__summary-item">
             <span className="file-section__summary-label">Size:</span>
-            <span className="file-section__summary-value">{fileSizeText}</span>
+            <span
+              data-testid="peer-file-size"
+              className="file-section__summary-value"
+            >
+              {fileSizeText}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="transfer-status-text">{getStatusText()}</div>
+      <div
+        data-testid="peer-transfer-status-text"
+        className="transfer-status-text"
+      >
+        {getStatusText()}
+      </div>
 
       <TransferProgress stats={transferStats}></TransferProgress>
 
@@ -64,6 +79,7 @@ export function Peer({
       <div className="file-section__actions">
         <div className="actions-row">
           <button
+            data-testid="start-download-button"
             type="button"
             disabled={fileCount === 0 || downloadStatus === "transfer"}
             onClick={() => startDownload()}
