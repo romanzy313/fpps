@@ -64,7 +64,12 @@ export function Peer({
         </div>
       </div>
 
-      <div className="transfer-status-text">{getStatusText()}</div>
+      <div
+        data-testid="peer-transfer-status-text"
+        className="transfer-status-text"
+      >
+        {getStatusText()}
+      </div>
 
       <TransferProgress stats={transferStats}></TransferProgress>
 

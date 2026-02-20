@@ -126,7 +126,12 @@ export function Me({
         </div>
       </div>
 
-      <div className="transfer-status-text">{getStatusText()}</div>
+      <div
+        data-testid="my-transfer-status-text"
+        className="transfer-status-text"
+      >
+        {getStatusText()}
+      </div>
 
       <TransferProgress stats={transferStats}></TransferProgress>
 

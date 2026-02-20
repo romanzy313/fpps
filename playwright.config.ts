@@ -44,11 +44,15 @@ export default defineConfig({
       use: { ...devices["Desktop Firefox"] },
     },
 
-    // libxml2 is missing on Ubuntu 25.04
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
+    // libxml2 is missing on Ubuntu 25.10
+    // manually .deb'ed this
+    // https://ubuntu.pkgs.org/24.04/ubuntu-main-amd64/libxml2_2.9.14+dfsg-1.3ubuntu3_amd64.deb.html
+    // and this
+    // https://old-releases.ubuntu.com/ubuntu/pool/main/i/icu/libicu74_74.2-1ubuntu4_amd64.deb
+    {
+      name: "webkit",
+      use: { ...devices["Desktop Safari"] },
+    },
 
     /* Test against mobile viewports. */
     // {

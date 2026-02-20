@@ -78,29 +78,46 @@ test("transfer files", async ({ browser }) => {
     { ignoreCase: true },
   );
 
+  // in memory-limit is 50mb total
+  const TEST_FILE_COUNT = 20;
+  const TEST_FILE_SIZE = 2 << 19; // 1MB
+
   const testFiles = generateTestFiles({
-    count: 3,
-    sizeBytes: 2 << 19, // 1MB
+    count: TEST_FILE_COUNT,
+    sizeBytes: TEST_FILE_SIZE,
   });
 
   await page1.getByTestId("upload-files-input").setInputFiles(testFiles);
 
-  await expect(
-    page1.getByText("Waiting for peer to start downloading"),
-  ).toBeVisible();
-  await expect(page1.getByTestId("my-file-count")).toContainText("3");
+  await expect(page1.getByTestId("my-transfer-status-text")).toContainText(
+    "Waiting for peer to start downloading",
+  );
+  await expect(page1.getByTestId("my-file-count")).toContainText(
+    TEST_FILE_COUNT.toString(),
+  );
 
-  await expect(page2.getByText("Waiting to start the download")).toBeVisible();
-  await expect(page2.getByTestId("peer-file-count")).toContainText("3");
+  await expect(page2.getByTestId("peer-transfer-status-text")).toContainText(
+    "Waiting to start the download",
+  );
+  await expect(page2.getByTestId("peer-file-count")).toContainText(
+    TEST_FILE_COUNT.toString(),
+  );
+
+  // Download
 
   const downloadPromise = page2.waitForEvent("download");
 
   await page2.getByTestId("start-download-button").click();
 
-  await expect(page1.getByText("Completed")).toBeVisible({
-    timeout: 10000,
-  });
-  await expect(page2.getByText("Completed")).toBeVisible();
+  await expect(page1.getByTestId("my-transfer-status-text")).toContainText(
+    "Completed",
+    {
+      timeout: 20000,
+    },
+  );
+  await expect(page2.getByTestId("peer-transfer-status-text")).toContainText(
+    "Completed",
+  );
 
   const download = await downloadPromise;
   // download.saveAs("downloaded.zip");
@@ -115,7 +132,3 @@ test("transfer files", async ({ browser }) => {
   await ctx1.close();
   await ctx2.close();
 });
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
