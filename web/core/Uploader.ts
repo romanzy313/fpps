@@ -24,9 +24,6 @@ export class Uploader {
   private isReading = false;
 
   constructor(private peerChannel: IPeerChannel) {
-    // peerChannel.listenOnMessage((msg) => {
-    //   this.onData(msg);
-    // });
     peerChannel.listenOnMessage(this.onData.bind(this));
     peerChannel.listenOnDrain(this.onDrain.bind(this));
   }
