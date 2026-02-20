@@ -33,6 +33,7 @@ export function ShareLink({ code }: { code: string }) {
               copyToClipboard();
             }
           }}
+          data-testid="share-link-url"
         >
           {shareLink}
         </div>

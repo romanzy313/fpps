@@ -66,7 +66,11 @@ export function Home() {
             </p>
           </div>
           <div className="home-card__content">
-            <button className="home-card__button" onClick={startRoom}>
+            <button
+              className="home-card__button"
+              onClick={startRoom}
+              data-testid="create-room-button"
+            >
               Create Room
             </button>
           </div>
@@ -97,7 +101,11 @@ export function Home() {
                 // eslint-disable-next-line react/no-unknown-property
                 spellcheck={false}
               />
-              <button className="join-form__button" type="submit">
+              <button
+                className="join-form__button"
+                type="submit"
+                data-testid="join-room-button"
+              >
                 Join Room
               </button>
             </form>
