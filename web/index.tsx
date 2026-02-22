@@ -8,11 +8,13 @@ import {
 } from "preact-iso";
 
 import "./style.css";
-import { Header } from "./components/Header.jsx";
-import { Home } from "./pages/Home/index.jsx";
-import { NotFound } from "./pages/_404.jsx";
-import { Room } from "./pages/Room/index.jsx";
-const About = lazy(() => import("./pages/About/index"));
+import { Header } from "./components/Header";
+import { Footer } from "./components/Footer";
+
+const NotFound = lazy(() => import("./pages/_404"));
+const Home = lazy(() => import("./pages/home/index"));
+const Room = lazy(() => import("./pages/room/index"));
+const About = lazy(() => import("./pages/about/index"));
 
 export function App() {
   return (
@@ -26,6 +28,7 @@ export function App() {
           <Route default component={NotFound} />
         </Router>
       </main>
+      <Footer />
     </LocationProvider>
   );
 }

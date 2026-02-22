@@ -10,6 +10,10 @@ A peer-to-peer file sharing application. Supports two-way uploads using a concep
 
 -   `pnpm preview` - Starts a server at http://localhost:4173/ to test production build locally
 
+## Self Host
+
+TODO: tutorial here
+
 ## Technologies
 
 - WebRPC: peer-to-peer communication
@@ -18,10 +22,9 @@ A peer-to-peer file sharing application. Supports two-way uploads using a concep
 - Upload/download folders using [fflate](https://github.com/101arrowz/fflate), for single file download and compression!
 - Using [StreamSaver.js](https://github.com/jimmywarting/StreamSaver.js) library to download files as a writable stream.
 
+
+
 ## TODOS:
- - Prevent away navigation during transfer
- - Style 404 page + make it servable via golang
- - Handle errors for private WebRTC configurations
  - Errors dont display as such
  - Abrupt disconnect messes up error handling (stuck at transferring)
  - Currupted file transfers?

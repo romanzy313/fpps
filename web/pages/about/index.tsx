@@ -1,3 +1,4 @@
+import { ExternalLink } from "../../utils/ExternalLink";
 import { faqs } from "./faqs";
 import "./style.css";
 
@@ -31,11 +32,11 @@ export default function AboutPage() {
           <h2 className="about-section__title">What is FPPS?</h2>
           <p className="about-section__text">
             FPPS stands for <b>Free Peer-to-Peer file Sharing, real name TBD</b>
-            . It is a web application that enables direct file sharing between
-            browsers using WebRTC technology. Unlike traditional file sharing
-            services that require uploading to a server, FPPS creates direct
-            peer-to-peer connections, making file transfers fast, private, and
-            unlimited.
+            . It is a web application that enables direct file transfers between
+            browsers using WebRTC technology. Unlike traditional file-sharing
+            services that require uploading to a server, FPPS establishes direct
+            browser connections, enabling fast, private, unlimited file
+            transfers.
           </p>
         </section>
 
@@ -48,10 +49,10 @@ export default function AboutPage() {
             connection is established between your browsers.
           </p>
           <p className="about-section__text">
-            Files are compressed and transferred directly from one browser to
-            another. Your files never touch the servers, the server only
-            facilitate signaling to establish WebRTC connection. Once connected,
-            it's just you and your peer.
+            Files are compressed and transferred directly between browsers. Your
+            files never touch our servers; the server only facilitates signaling
+            to establish a WebRTC connection. Once connected, it's just you and
+            your peer.
           </p>
         </section>
 
@@ -95,21 +96,13 @@ export default function AboutPage() {
           <h2 className="about-section__title">Open Source</h2>
           <p className="about-section__text">
             FPPS is open source software licensed under{" "}
-            <a
-              href="https://www.gnu.org/licenses/agpl-3.0.en.html"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <ExternalLink href="https://www.gnu.org/licenses/agpl-3.0.en.html">
               AGPL-3.0
-            </a>
-            . The source code is available on{" "}
-            <a
-              href="https://github.com/romanzy313/fpps"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub
-            </a>
+            </ExternalLink>
+            . The source code can be found{" "}
+            <ExternalLink href="https://github.com/romanzy313/fpps">
+              here
+            </ExternalLink>
             .
           </p>
         </section>
@@ -129,36 +122,6 @@ export default function AboutPage() {
           ))}
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="about-footer">
-        <p className="about-footer__text">
-          Created by{" "}
-          <a
-            href="https://volovoy.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Roman Volovoy
-          </a>{" "}
-          •{" "}
-          <a
-            href="https://github.com/romanzy313/fpps"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub
-          </a>{" "}
-          •{" "}
-          <a
-            href="https://github.com/romanzy313/fpps/blob/main/LICENSE"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            License
-          </a>
-        </p>
-      </footer>
     </div>
   );
 }

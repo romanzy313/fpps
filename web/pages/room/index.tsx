@@ -5,7 +5,7 @@ import { Peer } from "../../components/Peer";
 import { useRoom } from "../../hooks/useRoom";
 import { PeerStatus } from "../../components/PeerStatus";
 
-export function Room() {
+export default function RoomPage() {
   const {
     connectionState,
     myFiles,

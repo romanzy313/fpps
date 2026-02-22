@@ -4,7 +4,7 @@ import { secureId } from "../../utils/secureId";
 import { useLocation } from "preact-iso";
 import { isValidRoomHash, stringifyRoomParams } from "../../utils/roomParams";
 
-export function Home() {
+export default function HomePage() {
   const { route } = useLocation();
 
   function startRoom() {
