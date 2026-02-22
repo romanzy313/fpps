@@ -6,6 +6,7 @@ type IceServersDef = {
 export const publicGoogleStunServers = ["stun:stun.l.google.com:19302"];
 export const devStunServers = ["stun:localhost:3478"];
 
+// TODO: clean me up, just static, ice on node dev only
 export const iceServersList: IceServersDef[] = [
   {
     name: "Dev" as const,

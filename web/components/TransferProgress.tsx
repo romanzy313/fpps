@@ -1,4 +1,4 @@
-import { TransferStats } from "../core/PeerChannel";
+import { TransferStats } from "../core/protocol";
 import { formatFileSize } from "../utils/formatSize";
 
 type Props = {

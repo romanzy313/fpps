@@ -8,7 +8,7 @@ import {
   TransferStats,
   TransferStatus,
   zeroTransferStats,
-} from "../core/PeerChannel";
+} from "../core/protocol";
 import { applicationErrorToText } from "../core/applicationError";
 import { usePreventNavigation } from "./usePreventNavigation";
 

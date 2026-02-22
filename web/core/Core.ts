@@ -10,9 +10,7 @@ import { BetterPeerChannel } from "./WebRTC/BetterPeerChannel";
 import { SignalingSSE } from "./WebRTC/SignalingSSE";
 import { ApplicationError } from "./applicationError";
 import { MultiSubscriber } from "../utils/MultiSubscriber";
-import { EncodeUTF8 } from "fflate/node";
 import { Encryptor } from "../utils/encryption";
-// import * as streamsaver from "streamsaver";
 
 export type FileItem = {
   path: string;
@@ -22,7 +20,7 @@ export type FileItem = {
 
 export type FullFilesState = {
   id: string;
-  items: FileItem[]; // not done here!
+  items: FileItem[];
   totalCount: number;
   totalBytes: number;
 };
@@ -103,6 +101,7 @@ export class Core {
       console.log("PEER CHANNEL STATE", {
         status,
       });
+      // TODO: dont rely on these
       if (this.connectionState.value === "error") {
         // hacky hack: "ignore everything after error"
         return;
@@ -177,8 +176,6 @@ export class Core {
   }
 
   public startDownload() {
-    // const streamSaver = window.streamSaver;
-    // const writeStream = streamSaver.createWriteStream("test.zip", {});
     const writeStream = window.streamSaver.createWriteStream(
       "download.zip",
       {},
@@ -201,11 +198,4 @@ export class Core {
       },
     });
   }
-}
-
-function isRTCUserAbortError(error: Error) {
-  return (
-    error.name === "OperationError" &&
-    error.message.includes("User-Initiated Abort")
-  );
 }

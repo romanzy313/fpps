@@ -1,16 +1,3 @@
-// export interface PeerChannelSender {
-//   isReady(): boolean;
-//   backpressureRemainingBytes(): number;
-//   sendMessage(message: PeerMessage): void;
-//   listenOnDrained(cb: () => void): void; // TODO: return unsub function
-// }
-
-// export interface PeerChannelReciever {
-//   listenOnMessage(cb: (message: PeerMessage) => void): void;
-// }
-
-// export interface PeerChannel extends PeerChannelSender, PeerChannelReciever {}
-
 export type TransferStatus = "idle" | "transfer" | "done" | "aborted";
 
 export type TransferStats = {
@@ -95,9 +82,6 @@ export class TransferProtocol {
     const rest = data.slice(2);
     function json() {
       return JSON.parse(decoder.decode(rest));
-    }
-    function string() {
-      return decoder.decode(rest);
     }
 
     switch (type) {

@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import { FullFilesState } from "../core/Core";
-import { TransferStats, TransferStatus } from "../core/PeerChannel";
+import { TransferStats, TransferStatus } from "../core/protocol";
 import { formatFileSize } from "../utils/formatSize";
 import { TransferProgress } from "./TransferProgress";
 

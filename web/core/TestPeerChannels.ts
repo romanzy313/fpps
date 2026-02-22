@@ -1,5 +1,5 @@
 import { ApplicationError } from "./applicationError";
-import { PeerMessage, TransferProtocol } from "./PeerChannel";
+import { PeerMessage, TransferProtocol } from "./protocol";
 import { IPeerChannel } from "./WebRTC/types";
 
 const maxBackpressure = 1 << 18; // 256kb

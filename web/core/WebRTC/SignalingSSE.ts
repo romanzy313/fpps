@@ -26,7 +26,7 @@ export class SignalingSSE implements Signaler {
           console.warn("reconnecting to signaling");
         }
 
-        // or it could be closed
+        // or it could be closed?
       }
     };
     this.es.onmessage = (ev) => {

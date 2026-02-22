@@ -1,6 +1,6 @@
 import { Zip, ZipDeflate } from "fflate/browser";
 
-import { PeerMessage, TransferStats, TransferStatus } from "./PeerChannel";
+import { PeerMessage, TransferStats, TransferStatus } from "./protocol";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 import { IPeerChannel } from "./WebRTC/types";
 import { ChunkedWriter } from "./ChunkedWriter";
@@ -15,15 +15,8 @@ export class Uploader {
 
   status = new ValueSubscriber<TransferStatus>("idle");
 
-  // for peer to see
   private totalProcessedBytes = 0;
   private currentFileIndex = 0;
-
-  // private chunkedWriter = new ChunkedWriter(CHUNK_SIZE, (data) => {
-  //   if (!this.zip) {
-  //     throw new Error("Zip not initialized");
-  //   }
-  // })
 
   private current: {
     status: "transfer" | "backpressure" | "abort" | "done";
@@ -44,7 +37,6 @@ export class Uploader {
   }
 
   // TODO: for some reason this does not count duplicate file bytes
-  // Its nice, but why?
   get totalSizeBytes(): number {
     // TODO: pls cache
     return this.files.reduce((acc, file) => acc + file.size, 0);
@@ -235,6 +227,7 @@ export class Uploader {
         // when connection error is enountered, it thows here:
         // Error: Zip error: Cannot send: data channel is not open
         // TODO: unified error handling
+        // FIXME: error handling! this is fatal
         throw new Error(`Zip error: ${err.message}`);
       }
 

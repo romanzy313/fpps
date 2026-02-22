@@ -1,3 +1,6 @@
+// TODO: define it as FatalError or RecoverableError classes instead.
+// message is i18n string
+
 type ApplicationKnownError =
   | "webrtc_disabled"
   | "server_error"
@@ -70,3 +73,10 @@ export function convertError(err: unknown): ApplicationError {
     unhandledMessage: `${err}`,
   };
 }
+
+// function isRTCUserAbortError(error: Error) {
+//   return (
+//     error.name === "OperationError" &&
+//     error.message.includes("User-Initiated Abort")
+//   );
+// }

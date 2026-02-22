@@ -1,5 +1,5 @@
 import { ApplicationError } from "../applicationError";
-import { PeerMessage } from "../PeerChannel";
+import { PeerMessage } from "../protocol";
 
 export type PeerConnectionStatus =
   | "disconnected"

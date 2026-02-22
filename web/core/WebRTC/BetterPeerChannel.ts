@@ -1,5 +1,5 @@
 import Peer from "peer-lite";
-import { PeerMessage, TransferProtocol } from "../PeerChannel";
+import { PeerMessage, TransferProtocol } from "../protocol";
 import { MultiSubscriber } from "../../utils/MultiSubscriber";
 import { getIceServers } from "./iceServers";
 import { IPeerChannel, PeerConnectionStatus, Signaler } from "./types";

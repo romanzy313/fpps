@@ -4,7 +4,7 @@ import {
   TransferStats,
   TransferStatus,
   zeroTransferStats,
-} from "./PeerChannel";
+} from "./protocol";
 import { AsyncZipDeflate, Zip } from "fflate/browser";
 import { IPeerChannel } from "./WebRTC/types";
 
