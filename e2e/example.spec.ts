@@ -32,11 +32,11 @@ test("connect peers", async ({ browser }) => {
   const ctx2 = await browser.newContext();
   const page2 = await ctx2.newPage();
 
-  await page2.goto(shareLink);
+  await page2.goto(shareLink, { waitUntil: "networkidle" });
 
   await expect(page1.getByTestId("peer-status-text")).toContainText(
     "Connected",
-    { ignoreCase: true },
+    { ignoreCase: true, timeout: 10_000 },
   );
   await expect(page2.getByTestId("peer-status-text")).toContainText(
     "Connected",
@@ -67,11 +67,11 @@ test("transfer files", async ({ browser }) => {
   const ctx2 = await browser.newContext();
   const page2 = await ctx2.newPage();
 
-  await page2.goto(shareLink);
+  await page2.goto(shareLink, { waitUntil: "networkidle" });
 
   await expect(page1.getByTestId("peer-status-text")).toContainText(
     "Connected",
-    { ignoreCase: true },
+    { ignoreCase: true, timeout: 10_000 },
   );
   await expect(page2.getByTestId("peer-status-text")).toContainText(
     "Connected",

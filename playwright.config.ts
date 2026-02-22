@@ -38,7 +38,16 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: {
+          // e2e tests fails in background. Use UI mode to test, I guess.
+          args: [
+            "--allow-loopback-in-peer-connection",
+            "--disable-features=WebRtcHideLocalIpsWithMdns",
+          ],
+        },
+      },
     },
 
     {
