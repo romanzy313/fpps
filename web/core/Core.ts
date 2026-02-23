@@ -1,5 +1,4 @@
 import { RoomParams } from "../utils/roomParams";
-import { secureId } from "../utils/secureId";
 import { ReactiveValue } from "../utils/ReactiveValue";
 import { PeerConnectionStatus } from "./WebRTC/types";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
@@ -11,6 +10,7 @@ import { SignalingSSE } from "./WebRTC/SignalingSSE";
 import { ApplicationError } from "./applicationError";
 import { MultiSubscriber } from "../utils/MultiSubscriber";
 import { Encryptor } from "../utils/encryption";
+import { nanoid } from "nanoid";
 
 export type FileItem = {
   path: string;
@@ -25,9 +25,13 @@ export type FullFilesState = {
   totalBytes: number;
 };
 
+function randomId() {
+  return nanoid(20);
+}
+
 export function emptyPeerFiles(): FullFilesState {
   return {
-    id: secureId(),
+    id: randomId(),
     items: [],
     totalCount: 0,
     totalBytes: 0,
@@ -59,13 +63,13 @@ export class Core {
   }
 
   private myFiles: FullFilesState = {
-    id: secureId(),
+    id: randomId(),
     items: [],
     totalCount: 0,
     totalBytes: 0,
   };
   private peerFiles: FullFilesState = {
-    id: secureId(),
+    id: randomId(),
     items: [],
     totalCount: 0,
     totalBytes: 0,
@@ -143,7 +147,7 @@ export class Core {
 
     const parsedFiles = files.map(parseFile);
 
-    this.myFiles.id = secureId();
+    this.myFiles.id = randomId();
     this.myFiles.items = [...this.myFiles.items, ...parsedFiles];
     this.myFiles.totalCount += parsedFiles.length;
     this.myFiles.totalBytes += parsedFiles.reduce(
@@ -163,7 +167,7 @@ export class Core {
   public clearFiles() {
     this.uploader.setFiles([]);
 
-    this.myFiles.id = secureId();
+    this.myFiles.id = randomId();
     this.myFiles.items = [];
     this.myFiles.totalCount = 0;
     this.myFiles.totalBytes = 0;

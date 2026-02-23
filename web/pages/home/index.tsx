@@ -1,8 +1,11 @@
 import "./style.css";
 
-import { secureId } from "../../utils/secureId";
 import { useLocation } from "preact-iso";
-import { parseRoomParams, stringifyRoomParams } from "../../utils/roomParams";
+import {
+  generateRoomParams,
+  parseRoomParams,
+  stringifyRoomParams,
+} from "../../utils/roomParams";
 import { useState } from "preact/hooks";
 
 export default function HomePage() {
@@ -10,16 +13,8 @@ export default function HomePage() {
   const [joinCode, setJoinCode] = useState("");
 
   function startRoom() {
-    const myId = secureId();
-    const peerId = secureId();
-    const secret = secureId();
-
-    const hashValue = stringifyRoomParams({
-      myId,
-      peerId,
-      secret,
-    });
-
+    const params = generateRoomParams();
+    const hashValue = stringifyRoomParams(params);
     route(`/room#${hashValue}`);
   }
 

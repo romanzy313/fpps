@@ -25,6 +25,7 @@
     "@preact/signals": "^2.5.1",
     "fflate": "^0.8.2",
     "json-or-binary": "^0.9.9",
+    "nanoid": "^5.1.6",
     "peer-lite": "^2.0.2",
     "preact": "^10.26.9",
     "preact-iso": "^2.11.0",

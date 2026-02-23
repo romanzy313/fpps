@@ -1,26 +1,30 @@
 import { describe, it, expect } from "vitest";
-import { parseRoomParams, stringifyRoomParams } from "./roomParams";
+import {
+  generateRoomParams,
+  parseRoomParams,
+  stringifyRoomParams,
+} from "./roomParams";
 
 describe("parseRoomParams", () => {
   it("should parse valid room params", () => {
-    const input = "m:user123;p:peer456;s:secret789";
+    const input = `m:user123_____________;p:peer456_____________;s:secret789___________`;
     const result = parseRoomParams(input);
 
     expect(result).toEqual({
-      myId: "user123",
-      peerId: "peer456",
-      secret: "secret789",
+      myId: "user123_____________",
+      peerId: "peer456_____________",
+      secret: "secret789___________",
     });
   });
 
   it("should parse with full urlvalid room params", () => {
-    const input = "https://example.com/room#m:user123;p:peer456;s:secret789";
+    const input = `https://example.com/room#m:${"user123".padEnd(20, "_")};p:${"peer456".padEnd(20, "_")};s:${"secret789".padEnd(20, "_")}`;
     const result = parseRoomParams(input);
 
     expect(result).toEqual({
-      myId: "user123",
-      peerId: "peer456",
-      secret: "secret789",
+      myId: "user123".padEnd(20, "_"),
+      peerId: "peer456".padEnd(20, "_"),
+      secret: "secret789".padEnd(20, "_"),
     });
   });
 
@@ -47,10 +51,21 @@ describe("parseRoomParams", () => {
 describe("stringifyRoomParams", () => {
   it("should round-trip correctly", () => {
     const original = {
-      myId: "user123",
-      peerId: "peer456",
-      secret: "secret789",
+      myId: "user123".padEnd(20, "_"),
+      peerId: "peer456".padEnd(20, "_"),
+      secret: "secret789".padEnd(20, "_"),
     };
+
+    const stringified = stringifyRoomParams(original);
+    const parsed = parseRoomParams(stringified);
+
+    expect(parsed).toEqual(original);
+  });
+});
+
+describe("generateRoomParams", () => {
+  it("should round-trip correctly", () => {
+    const original = generateRoomParams();
 
     const stringified = stringifyRoomParams(original);
     const parsed = parseRoomParams(stringified);
