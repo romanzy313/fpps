@@ -9,12 +9,12 @@ function ssrRoomParams(): RoomParams {
   };
 }
 
-export function useRoomParams() {
+export function useRoomParams(): RoomParams {
   if (typeof window === "undefined") {
     return ssrRoomParams();
   }
 
-  const [roomParams, setRoomParams] = useState<RoomParams>(
+  const [roomParams, setRoomParams] = useState(
     parseRoomParams(window.location.hash.substring(1)),
   );
 
@@ -25,6 +25,11 @@ export function useRoomParams() {
 
     return () => window.removeEventListener("hashchange", onHashChange);
   }, [window.location.hash]);
+
+  if (!roomParams) {
+    window.location.href = "/"; // Redirect to home page if room params are invalid
+    return null as any;
+  }
 
   return roomParams;
 }

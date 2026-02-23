@@ -21,31 +21,19 @@ describe("parseRoomParams", () => {
     const input = "m:user123;p:peer456";
     const result = parseRoomParams(input);
 
-    expect(result).toEqual({
-      myId: "user123",
-      peerId: "peer456",
-      secret: "",
-    });
+    expect(result).toEqual(null);
   });
 
   it("should handle empty string", () => {
     const result = parseRoomParams("");
 
-    expect(result).toEqual({
-      myId: "",
-      peerId: "",
-      secret: "",
-    });
+    expect(result).toEqual(null);
   });
 
   it("should handle malformed input", () => {
     const result = parseRoomParams("garbage");
 
-    expect(result).toEqual({
-      myId: "",
-      peerId: "",
-      secret: "",
-    });
+    expect(result).toEqual(null);
   });
 });
 
