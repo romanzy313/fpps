@@ -200,7 +200,7 @@ export class BetterPeerChannel implements IPeerChannel {
         enableDataChannels: true,
         batchCandidates: true,
         config: {
-          iceServers: getIceServers("Dev"),
+          iceServers: getIceServers(),
         },
       });
     } catch (err) {

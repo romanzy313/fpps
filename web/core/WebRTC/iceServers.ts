@@ -1,40 +1,33 @@
-type IceServersDef = {
-  name: string;
-  servers: RTCIceServer[];
-};
+type IceServers = (RTCIceServer & { provider: string })[];
 
 export const publicGoogleStunServers = ["stun:stun.l.google.com:19302"];
 export const devStunServers = ["stun:localhost:3478"];
 
-// TODO: clean me up, just static, ice on node dev only
-export const iceServersList: IceServersDef[] = [
+const localDev = {
+  provider: "Local Dev",
+  urls: ["stun:localhost:3478"],
+};
+
+const iceServers: IceServers = [
   {
-    name: "Dev" as const,
-    servers: [
-      {
-        urls: ["stun:localhost:3478"],
-      },
+    provider: "Google",
+    urls: [
+      "stun:stun.l.google.com:19302",
+      "stun:stun2.l.google.com:19302",
+      "stun:stun3.l.google.com:19302",
+      "stun:stun4.l.google.com:19302",
     ],
   },
   {
-    name: "Google" as const,
-    servers: [
-      {
-        urls: ["stun:stun.l.google.com:19302"],
-      },
-    ],
+    provider: "Mozilla",
+    urls: ["stun:stun.services.mozilla.com:3478"],
   },
 ] as const;
 
-// this doesnt work well
-// type AvailableServers = (typeof iceServersList)[number]["name"];
-
-export function getIceServers(name: string) {
-  const result = iceServersList.find((v) => v.name === name);
-
-  if (!result) {
-    throw new Error(`Invalid ice server name: ${name}`);
+// TODO allow to exclude servers of the other peer
+export function getIceServers(): IceServers {
+  if (import.meta.env.DEV) {
+    return [localDev, ...iceServers];
   }
-
-  return result.servers;
+  return iceServers;
 }
