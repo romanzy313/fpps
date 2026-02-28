@@ -1,11 +1,7 @@
 import { ApplicationError } from "../applicationError";
 import { PeerMessage } from "../protocol";
 
-export type PeerConnectionStatus =
-  | "disconnected"
-  | "connecting"
-  | "connected"
-  | "error";
+export type PeerConnectionStatus = "disconnected" | "connecting" | "connected";
 
 export interface Signaler {
   start(): void;

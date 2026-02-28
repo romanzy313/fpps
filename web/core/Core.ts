@@ -6,10 +6,12 @@ import { parseFile } from "../utils/parseFile";
 import { Uploader } from "./Uploader";
 import { Downloader } from "./Downloader";
 import { WebRTCPeerChannel, SignalingSSE } from "./WebRTC";
-import { ApplicationError } from "./applicationError";
+import { ApplicationError, FatalError } from "./ApplicationError";
 import { MultiSubscriber } from "../utils/MultiSubscriber";
 import { Encryptor } from "../utils/encryption";
 import { nanoid } from "nanoid";
+
+const BACKPRESSURE_AMOUNT = 1 << 20; // 1mb
 
 export type FileItem = {
   path: string;
@@ -42,7 +44,7 @@ export class Core {
   private betterPeerChannel: WebRTCPeerChannel;
   // this should be a signal?
   connectionState = new ValueSubscriber<PeerConnectionStatus>("disconnected");
-  error = new MultiSubscriber<ApplicationError>();
+  error = new MultiSubscriber<ApplicationError | null>();
 
   private uploader: Uploader;
   private downloader: Downloader;
@@ -93,9 +95,13 @@ export class Core {
     const signaler = new SignalingSSE(roomParams.myId, roomParams.peerId);
     const encryptor = new Encryptor(roomParams.secret);
 
-    const betterPeerChannel = new WebRTCPeerChannel(signaler, encryptor);
+    const peerChannel = new WebRTCPeerChannel(
+      signaler,
+      encryptor,
+      BACKPRESSURE_AMOUNT,
+    );
 
-    betterPeerChannel.listenOnMessage((message) => {
+    peerChannel.listenOnMessage((message) => {
       switch (message.type) {
         case "preview-content":
           this.peerFiles.totalCount = message.value.totalCount;
@@ -106,35 +112,33 @@ export class Core {
       }
     });
 
-    betterPeerChannel.onConnectionState = (status) => {
+    peerChannel.onConnectionState = (status) => {
       console.log("PEER CHANNEL STATE", {
         status,
       });
-      // TODO: dont rely on these
-      if (this.connectionState.value === "error") {
-        // hacky hack: "ignore everything after error"
-        return;
-      }
 
-      // TODO: refactor to not use values
       this.connectionState.setValue(status);
+
+      if (status !== "disconnected") {
+        this.error.notify(null);
+      }
 
       if (status === "connected") {
         this.sendPreviewContent();
       }
     };
-    betterPeerChannel.listenOnError((err) => {
+    peerChannel.listenOnError((err) => {
       this.error.notify(err);
     });
 
-    this.uploader = new Uploader(betterPeerChannel);
-    this.downloader = new Downloader(betterPeerChannel);
+    this.uploader = new Uploader(peerChannel);
+    this.downloader = new Downloader(peerChannel);
 
     setTimeout(() => {
-      betterPeerChannel.start();
+      peerChannel.start();
     });
 
-    this.betterPeerChannel = betterPeerChannel;
+    this.betterPeerChannel = peerChannel;
   }
 
   public dispose() {

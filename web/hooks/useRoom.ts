@@ -10,8 +10,8 @@ import {
   TransferStatus,
   zeroTransferStats,
 } from "../core";
-import { applicationErrorToText } from "../core/applicationError";
 import { usePreventNavigation } from "./usePreventNavigation";
+import { ApplicationError } from "../core/applicationError";
 
 const STATS_UPDATE_INTERVAL_MS = 500;
 
@@ -22,7 +22,7 @@ export function useRoom() {
   const [core, setCore] = useState<Core | null>(null);
   const [connectionState, setConnectionState] =
     useState<PeerConnectionStatus>("disconnected");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ApplicationError | null>(null);
 
   const [myFiles, setMyFiles] = useState<FullFilesState>(emptyPeerFiles());
   const [peerFiles, setPeerFiles] = useState<FullFilesState>(emptyPeerFiles());
@@ -79,12 +79,7 @@ export function useRoom() {
       setDownloadStatus(status);
     });
     newCore.error.subscribe((value) => {
-      if (value.fatal) {
-        const text = applicationErrorToText(value);
-        setError(text);
-      } else {
-        console.error("ERROR OCCURED TOAST", value);
-      }
+      setError(value);
     });
 
     // query stats every 500 ms
@@ -103,7 +98,7 @@ export function useRoom() {
   }, [roomParams]);
 
   function clearError() {
-    setError("");
+    setError(null);
   }
 
   const addMoreFiles = useCallback(

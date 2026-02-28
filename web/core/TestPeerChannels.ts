@@ -1,4 +1,4 @@
-import { ApplicationError } from "./applicationError";
+import { FatalError } from "./applicationError";
 import { PeerMessage, TransferProtocol } from "./protocol";
 import { PeerChannel } from "./WebRTC/types";
 
@@ -70,7 +70,7 @@ class TestPeerChannel implements PeerChannel {
     this._onDataCallback = cb;
   }
 
-  listenOnError(_: (err: ApplicationError) => void): void {
+  listenOnError(_: (err: FatalError) => void): void {
     //
   }
 }

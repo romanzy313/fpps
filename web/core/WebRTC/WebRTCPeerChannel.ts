@@ -3,7 +3,12 @@ import { PeerMessage, TransferProtocol } from "../protocol";
 import { MultiSubscriber } from "../../utils/MultiSubscriber";
 import { getIceServers } from "./iceServers";
 import { PeerChannel, PeerConnectionStatus, Signaler } from "./types";
-import { ApplicationError, convertError } from "../applicationError";
+import {
+  ApplicationError,
+  applicationErrorFromUnknown,
+  FatalError,
+  RestarableError,
+} from "../ApplicationError";
 import { Encryptor } from "../../utils/encryption";
 
 const RECONNECT_DELAY = 1_000;
@@ -42,6 +47,7 @@ export class WebRTCPeerChannel implements PeerChannel {
   constructor(
     private signaler: Signaler,
     private encryptor: Encryptor,
+    private backpressureAmount: number = 1 << 20, // 1mb by default
   ) {}
 
   isReady(): boolean {
@@ -55,9 +61,6 @@ export class WebRTCPeerChannel implements PeerChannel {
     this.onDrain = cb;
   }
   listenOnError = this._errorSubscribers.subscribe;
-  // listenOnError(cb: (err: Error) => void) {
-  //   this.onError = cb;
-  // }
 
   start() {
     if (this._errored) {
@@ -90,9 +93,13 @@ export class WebRTCPeerChannel implements PeerChannel {
       return;
     }
 
-    // FIXME: handle this as an error!
     if (this.dataChannel.readyState !== "open") {
-      this.handleError(new Error("connection_interrupted"));
+      this.handleError(
+        new FatalError(
+          "WebRTC connection is not open",
+          "connection_interrupted",
+        ),
+      );
       console.error("dataChannel", { dataChannel: this.dataChannel });
       return;
     }
@@ -103,26 +110,25 @@ export class WebRTCPeerChannel implements PeerChannel {
     this.dataChannel.send(encoded as any);
   }
 
-  private handleError(anyError: unknown) {
-    const applicationError = convertError(anyError);
-
+  private handleError(anyError: unknown): void {
+    const applicationError = applicationErrorFromUnknown(anyError);
     this._errorSubscribers.notify(applicationError);
 
-    if (applicationError.fatal) {
-      if (this.onConnectionState) {
-        this.onConnectionState("error");
-      }
-
-      this._errored = true;
-      this._reset();
-    } else {
-      this.restart();
+    if (applicationError instanceof RestarableError) {
+      return this.restart();
     }
+
+    this._errored = true;
+    this._reset();
   }
 
   private _reset() {
     this._isReady = false;
     this.signaler.stop();
+
+    if (this.onConnectionState) {
+      this.onConnectionState("disconnected");
+    }
 
     this.dataChannel?.close();
     this.dataChannel = null;
@@ -130,17 +136,17 @@ export class WebRTCPeerChannel implements PeerChannel {
     this.peer = null;
   }
 
-  // TODO: need to have a function to fully disconnect and cleanup
-  // no reconnections!
   dispose() {
-    throw new Error("TODO");
+    this._reset();
+    this._messageSubscribers.dispose();
+    this._errorSubscribers.dispose();
   }
 
   private setupDataChannel() {
     const dataChannel = this.peer!.getDataChannel("TEST")!;
 
     dataChannel.binaryType = "arraybuffer";
-    dataChannel.bufferedAmountLowThreshold = 1 << 20; // 1mb
+    dataChannel.bufferedAmountLowThreshold = this.backpressureAmount;
 
     dataChannel.addEventListener("open", () => {
       console.log("DATACHANNEL OPENED", {
@@ -179,15 +185,9 @@ export class WebRTCPeerChannel implements PeerChannel {
   private restart() {
     if (this._errored) {
       return;
-      // throw new Error("Cannot restart as rtc is errored");
     }
 
     this._reset();
-
-    // if (this.onConnectionState && !this._first) {
-    //   // reconnecting...
-    //   this.onConnectionState("connecting");
-    // }
 
     try {
       this.peer = new Peer({
@@ -208,7 +208,7 @@ export class WebRTCPeerChannel implements PeerChannel {
     this.peer.on("connected", () => {
       console.log("PEER CONNECTED");
 
-      this.peer!.addDataChannel("TEST", {
+      this.peer!.addDataChannel("fpps", {
         ordered: true,
         maxRetransmits: undefined,
         id: 99,
