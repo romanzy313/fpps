@@ -4,7 +4,12 @@ import { stringifyRoomParams } from "../utils/roomParams";
 import { useRoomParams } from "./useRoomParams";
 import { Core, emptyPeerFiles, FullFilesState } from "../core/Core";
 import { PeerConnectionStatus } from "../core/WebRTC/types";
-import { TransferStats, TransferStatus, zeroTransferStats } from "../core";
+import {
+  TransferSpeed,
+  TransferStats,
+  TransferStatus,
+  zeroTransferStats,
+} from "../core";
 import { applicationErrorToText } from "../core/applicationError";
 import { usePreventNavigation } from "./usePreventNavigation";
 
@@ -29,6 +34,11 @@ export function useRoom() {
     useState<TransferStats>(zeroTransferStats());
   const [downloadStats, setDownloadStats] =
     useState<TransferStats>(zeroTransferStats());
+
+  const [uploadSpeed, setUploadSpeed] = useState<TransferSpeed | null>(null);
+  const [downloadSpeed, setDownloadSpeed] = useState<TransferSpeed | null>(
+    null,
+  );
 
   const [isTransferring, setIsTransferring] = useState(false);
   useEffect(() => {
@@ -82,6 +92,8 @@ export function useRoom() {
     const stopInterval = setInterval(() => {
       setDownloadStats(newCore.downloadStatsValue());
       setUploadStats(newCore.uploadStatsValue());
+      setDownloadSpeed(newCore.downloadSpeedValue());
+      setUploadSpeed(newCore.uploadSpeedValue());
     }, STATS_UPDATE_INTERVAL_MS);
 
     return () => {
@@ -129,9 +141,11 @@ export function useRoom() {
     abortDownload,
     abortUpload,
     downloadStatus,
-    uploadStatus,
     downloadStats,
+    downloadSpeed,
+    uploadStatus,
     uploadStats,
+    uploadSpeed,
     error,
     clearError,
   };

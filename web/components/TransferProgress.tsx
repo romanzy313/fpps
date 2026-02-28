@@ -1,11 +1,17 @@
-import { TransferStats } from "../core/protocol";
-import { formatFileSize } from "../utils/formatSize";
+import { TransferStats, TransferSpeed } from "../core";
+import { formatDuration } from "../utils/formatDuration";
+import { formatSize } from "../utils/formatSize";
+import { formatSpeed } from "../utils/formatSpeed";
 
 type Props = {
   stats: TransferStats;
+  speed: TransferSpeed | null;
 };
 
-export function TransferProgress({ stats: transferStats }: Props) {
+export function TransferProgress({
+  stats: transferStats,
+  speed: transferSpeed,
+}: Props) {
   const progressText = computeProgressText(
     transferStats.transferredBytes,
     transferStats.totalBytes,
@@ -24,8 +30,15 @@ export function TransferProgress({ stats: transferStats }: Props) {
         <span className="transfer-progress__percentage">{progressText}</span>
         <span className="transfer-progress__stats">
           {transferStats.currentIndex} / {transferStats.totalFiles} files ·{" "}
-          {formatFileSize(transferStats.transferredBytes)} /{" "}
-          {formatFileSize(transferStats.totalBytes)}
+          {formatSize(transferStats.transferredBytes)} /{" "}
+          {formatSize(transferStats.totalBytes)} ·{" "}
+          {transferSpeed
+            ? formatSpeed(transferSpeed.speedBytesPerSecond)
+            : "---"}{" "}
+          ·{" "}
+          {transferSpeed
+            ? formatDuration(transferSpeed.remainingSeconds)
+            : "---"}
         </span>
       </div>
       <div className="transfer-progress__bar-container">

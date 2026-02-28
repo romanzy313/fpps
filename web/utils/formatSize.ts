@@ -1,19 +1,19 @@
 // https://developer.mozilla.org/en-US/docs/Web/API/File_API/Using_files_from_web_applications#example_showing_files_size
-export function formatFileSize(numberOfBytes: number): string {
+// TODO: sometimes this should undefined
+export function formatSize(numberOfBytes: number): string {
   if (numberOfBytes === 0) {
-    return "0 bytes";
+    return "0 B";
   }
 
-  // Approximate to the closest prefixed unit
-  const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+  const units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
   const exponent = Math.min(
-    Math.floor(Math.log(numberOfBytes) / Math.log(1024)),
+    Math.max(Math.floor(Math.log(numberOfBytes) / Math.log(1000)), 0),
     units.length - 1,
   );
-  const approx = numberOfBytes / 1024 ** exponent;
+  const approx = numberOfBytes / 1000 ** exponent;
   const output =
     exponent === 0
-      ? `${numberOfBytes} bytes`
+      ? `${numberOfBytes.toFixed(1)} B`
       : `${approx.toFixed(1)} ${units[exponent]}`;
 
   return output;

@@ -1,13 +1,14 @@
 import { useState } from "preact/hooks";
 import { FullFilesState } from "../core/Core";
-import { TransferStats, TransferStatus } from "../core/protocol";
-import { formatFileSize } from "../utils/formatSize";
+import { TransferSpeed, TransferStats, TransferStatus } from "../core";
+import { formatSize } from "../utils/formatSize";
 import { TransferProgress } from "./TransferProgress";
 
 type Props = {
   peerFiles: FullFilesState;
   uploadStatus: TransferStatus;
   transferStats: TransferStats;
+  transferSpeed: TransferSpeed | null;
   addMyFiles: (files: File[]) => void;
   clearFiles: () => void;
   abortUpload: () => void;
@@ -17,12 +18,13 @@ export function Me({
   peerFiles,
   uploadStatus,
   transferStats,
+  transferSpeed,
   addMyFiles,
   clearFiles,
   abortUpload,
 }: Props) {
   const fileCount = peerFiles.totalCount;
-  const fileSizeText = formatFileSize(peerFiles.totalBytes);
+  const fileSizeText = formatSize(peerFiles.totalBytes);
 
   const canUploadFiles = uploadStatus !== "transfer";
 
@@ -133,7 +135,10 @@ export function Me({
         {getStatusText()}
       </div>
 
-      <TransferProgress stats={transferStats}></TransferProgress>
+      <TransferProgress
+        stats={transferStats}
+        speed={transferSpeed}
+      ></TransferProgress>
 
       <div className="file-section__actions">
         <div className="actions-row">

@@ -1,6 +1,12 @@
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 import { PeerMessage, TransferStatus } from "./protocol";
-import { TransferStats, zeroTransferStats } from "./transferStats";
+import {
+  CalcTransferSpeed,
+  makeCalcTransferSpeed,
+  TransferSpeed,
+  TransferStats,
+  zeroTransferStats,
+} from "./transferStats";
 import { IPeerChannel } from "./WebRTC/types";
 
 export class Downloader {
@@ -8,14 +14,21 @@ export class Downloader {
   private stats: TransferStats = zeroTransferStats();
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 
+  private speed: TransferSpeed | null = null;
+  private calcSpeed: CalcTransferSpeed | null = null;
+
   constructor(private peerChannel: IPeerChannel) {
     peerChannel.listenOnMessage((msg) => {
-      this.onData(msg);
+      this.onPeerMessage(msg);
     });
   }
 
   getStats() {
     return this.stats;
+  }
+
+  getSpeed() {
+    return this.speed;
   }
 
   private resetStatsProgress() {
@@ -56,33 +69,7 @@ export class Downloader {
     this.internalAbort();
   }
 
-  private async internalAbort() {
-    if (this.status.value !== "transfer") {
-      throw new Error(
-        `Cannot abort a non-downloading transfer (bad status: ${this.status.value})`,
-      );
-    }
-
-    this.status.setValue("aborted");
-
-    if (!this.writer) {
-      throw new Error("Cannot abort a non-downloading transfer (no writer)");
-    }
-
-    await this.writer.abort();
-    this.writer = null;
-  }
-
-  private async done() {
-    this.status.setValue("done");
-    if (!this.writer) {
-      throw new Error("Cannot complete a transfer without a writer");
-    }
-    await this.writer.close();
-    this.writer = null;
-  }
-
-  private onData(message: PeerMessage) {
+  private onPeerMessage(message: PeerMessage) {
     // console.log("NEW MESSAGE", message);
     switch (message.type) {
       case "transfer-start":
@@ -111,6 +98,11 @@ export class Downloader {
         break;
       case "transfer-stats":
         this.stats = message.value;
+        if (!this.calcSpeed) {
+          this.calcSpeed = makeCalcTransferSpeed(message.value.totalBytes);
+        }
+
+        this.speed = this.calcSpeed(message.value.transferredBytes);
         break;
       case "transfer-abort":
         if (this.status.value === "transfer") {
@@ -129,6 +121,41 @@ export class Downloader {
     }
 
     // Handle data
+  }
+
+  private async internalAbort() {
+    this.transferFinished();
+
+    if (this.status.value !== "transfer") {
+      throw new Error(
+        `Cannot abort a non-downloading transfer (bad status: ${this.status.value})`,
+      );
+    }
+
+    this.status.setValue("aborted");
+
+    if (!this.writer) {
+      throw new Error("Cannot abort a non-downloading transfer (no writer)");
+    }
+
+    await this.writer.abort();
+    this.writer = null;
+  }
+
+  private async done() {
+    this.transferFinished();
+
+    this.status.setValue("done");
+    if (!this.writer) {
+      throw new Error("Cannot complete a transfer without a writer");
+    }
+    await this.writer.close();
+    this.writer = null;
+  }
+
+  private transferFinished() {
+    this.speed = null;
+    this.calcSpeed = null;
   }
 
   dispose() {

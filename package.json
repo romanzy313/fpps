@@ -16,6 +16,7 @@
     "lint": "eslint",
     "check": "tsc --noEmit",
     "server:run": "pnpm build && PORT=3000 go run main.go",
+    "server:dev": "PORT=6173 go run main.go",
     "server:build": "go build -o ./bin/server main.go"
   },
   "author": "Roman Volovoy",

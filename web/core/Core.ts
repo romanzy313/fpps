@@ -51,12 +51,18 @@ export class Core {
   uploadStatsValue() {
     return this.uploader.getStats();
   }
+  uploadSpeedValue() {
+    return this.uploader.getSpeed();
+  }
   get uploaderStatus() {
     return this.uploader.status;
   }
 
   downloadStatsValue() {
     return this.downloader.getStats();
+  }
+  downloadSpeedValue() {
+    return this.downloader.getSpeed();
   }
   get downloaderStatus() {
     return this.downloader.status;
