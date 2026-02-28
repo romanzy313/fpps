@@ -1,5 +1,6 @@
 import { useLocation } from "preact-iso";
 
+// TODO: prevent navigation
 export function Header() {
   const { url } = useLocation();
 

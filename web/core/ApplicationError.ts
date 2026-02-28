@@ -29,7 +29,7 @@ export function applicationErrorFromUnknown(cause: unknown): ApplicationError {
 export class FatalError extends Error {
   constructor(
     message: string,
-    private type: ApplicationErrorType,
+    public type: ApplicationErrorType,
   ) {
     super(message);
     this.name = "FatalError";
@@ -64,7 +64,7 @@ export class FatalError extends Error {
 export class RestarableError extends Error {
   constructor(
     message: string,
-    private type: ApplicationErrorType,
+    public type: ApplicationErrorType,
   ) {
     super(message);
     this.name = "RestarableError";
@@ -72,18 +72,18 @@ export class RestarableError extends Error {
 
   static fromUnknown(cause: unknown): RestarableError | null {
     // https://developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel/error_event
+    if (cause instanceof Error) {
+      if (
+        cause.name === "OperationError" &&
+        cause.message.includes("User-Initiated Abort")
+      ) {
+        return new RestarableError(cause.message, "connection_aborted");
+      }
+    }
+
     if (cause instanceof RTCError) {
       return new RestarableError(cause.message, "connection_interrupted");
     }
-
-    // if (cause instanceof Error) {
-    //   if (
-    //     cause.name === "OperationError" &&
-    //     cause.message.includes("User-Initiated Abort")
-    //   ) {
-    //     return new RestarableError(cause.message, "connection_aborted");
-    //   }
-    // }
 
     return null;
   }

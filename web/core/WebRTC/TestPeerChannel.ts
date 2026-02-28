@@ -35,7 +35,7 @@ class TestPeerChannel implements PeerChannel {
     return this._remainingBytes < 0;
   }
 
-  write(message: PeerMessage) {
+  write(message: PeerMessage): boolean {
     if (!this._ready) {
       throw new Error("Not ready");
     }

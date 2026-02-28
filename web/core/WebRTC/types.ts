@@ -20,5 +20,5 @@ export interface PeerChannel {
   start(): void;
   stop(): void;
 
-  write(msg: PeerMessage): void;
+  write(msg: PeerMessage): boolean;
 }

@@ -3,7 +3,7 @@ import { Zip, ZipPassThrough } from "fflate/browser";
 import { PeerMessage, TransferStatus } from "./protocol";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 import { PeerChannel } from "./WebRTC/types";
-import { BufferedWriter } from "./BufferedWriter";
+import { BufferedWriter, IBufferedWriter } from "./BufferedWriter";
 import { TransferStats, transferStatsFromFiles } from "./TransferStats";
 import { TransferSpeed } from "./TransferSpeed";
 
@@ -21,10 +21,10 @@ export class Uploader {
   private speed = new TransferSpeed();
 
   private current: {
-    status: "transfer" | "backpressure" | "abort" | "done";
+    status: "transfer" | "backpressure" | "abort";
     isReading: boolean;
     zip: Zip;
-    bufferedWriter: BufferedWriter;
+    // bufferedWriter: IBufferedWriter;
     reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>;
     deflate: ZipPassThrough;
   } | null = null;
@@ -205,25 +205,32 @@ export class Uploader {
     }
 
     // create the current
-    const bufferedWriter = new BufferedWriter(CHUNK_SIZE, (data) => {
-      this.peerChannel.write({
-        type: "transfer-chunk",
-        value: data,
-      });
-    });
+    // const bufferedWriter = new BufferedWriter(CHUNK_SIZE, (data) => {
+    //   this.peerChannel.write({
+    //     type: "transfer-chunk",
+    //     value: data,
+    //   });
+    // });
+
     const zip = new Zip((err, data, done) => {
       if (err) {
         // when connection error is enountered, it thows here:
         // Error: Zip error: Cannot send: data channel is not open
         // TODO: unified error handling
-        // FIXME: error handling! this is fatal
+        // FIXME: error handling! this is restarable
+        // The uploader needs to be able to emit errors
         throw new Error(`Zip error: ${err.message}`);
       }
 
-      bufferedWriter.write(data);
+      this.peerChannel.write({
+        type: "transfer-chunk",
+        value: data,
+      });
+
+      // bufferedWriter.write(data);
 
       if (done) {
-        bufferedWriter.flush();
+        // bufferedWriter.flush();
         this.onZipEnd();
       }
     });
@@ -233,7 +240,7 @@ export class Uploader {
     this.current = {
       status: "transfer",
       isReading: false,
-      bufferedWriter,
+      // bufferedWriter,
       zip,
       reader: this.createReader(file),
       deflate: this.createDeflate(file, zip),
@@ -245,8 +252,9 @@ export class Uploader {
       console.warn("REQUESTEND: current not initialized");
       return;
     }
-
-    this.current.status = reason;
+    if (reason === "abort") {
+      this.current.status = "abort";
+    }
     this.current.deflate.push(new Uint8Array(0), true);
     this.current.zip.end();
   }
@@ -261,26 +269,25 @@ export class Uploader {
     }
     this.speed.reset(0);
 
-    switch (this.current.status) {
-      case "abort":
-        this.status.setValue("aborted");
-        // abort handling
-        break;
-      case "done":
-        this.status.setValue("done");
-
-        // this.flushTransferChunks();
-        this.peerChannel.write({ type: "transfer-done" });
-
-        this.peerChannel.write({
-          type: "transfer-stats",
-          value: this.stats,
-        });
-        break;
-      default:
-        throw new Error(`unexpected status ${this.current.status}`);
+    if (this.current.status === "abort") {
+      this.status.setValue("aborted");
+      this.current = null;
+      return;
     }
+    // otherwise its done
 
+    // this.current.bufferedWriter.flush();
+
+    // Whats going on here?
+
+    this.peerChannel.write({
+      type: "transfer-stats",
+      value: this.stats,
+    });
+
+    this.peerChannel.write({ type: "transfer-done" });
+
+    this.status.setValue("done");
     this.current = null;
   }
 
@@ -289,12 +296,17 @@ export class Uploader {
       return;
     }
 
-    if (this.current.status !== "backpressure") {
-      console.error("ONDRAIN: unexpected status", this.current.status);
+    if (this.current.status === "abort") {
+      return;
+    }
+
+    if (this.current.status === "transfer") {
+      console.warn("ONDRAIN: unexpected status", this.current.status);
       return;
     }
 
     this.current.status = "transfer";
+
     this.next();
   }
 

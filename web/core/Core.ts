@@ -41,7 +41,7 @@ export function emptyPeerFiles(): FullFilesState {
 
 // core implementation, like a room manager. Name TDB
 export class Core {
-  private betterPeerChannel: WebRTCPeerChannel;
+  private peerChannel: WebRTCPeerChannel;
   // this should be a signal?
   connectionState = new ValueSubscriber<PeerConnectionStatus>("disconnected");
   error = new MultiSubscriber<ApplicationError | null>();
@@ -138,11 +138,11 @@ export class Core {
       peerChannel.start();
     });
 
-    this.betterPeerChannel = peerChannel;
+    this.peerChannel = peerChannel;
   }
 
   public dispose() {
-    this.betterPeerChannel.stop();
+    this.peerChannel.stop();
     this.filesReactor.dispose();
     this.connectionState.dispose();
     this.uploader.dispose();
@@ -168,7 +168,7 @@ export class Core {
 
     this.uploaderStatus.setValue("idle");
 
-    if (this.betterPeerChannel.isReady()) {
+    if (this.peerChannel.isReady()) {
       this.sendPreviewContent();
     }
   }
@@ -183,7 +183,7 @@ export class Core {
 
     this.filesReactor.notifyListeners();
 
-    if (this.betterPeerChannel.isReady()) {
+    if (this.peerChannel.isReady()) {
       this.sendPreviewContent();
     }
   }
@@ -203,7 +203,7 @@ export class Core {
   }
 
   private sendPreviewContent() {
-    this.betterPeerChannel.write({
+    this.peerChannel.write({
       type: "preview-content",
       value: {
         totalCount: this.myFiles.totalCount,

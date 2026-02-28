@@ -10,6 +10,7 @@ import {
   RestarableError,
 } from "../ApplicationError";
 import { Encryptor } from "../../utils/encryption";
+import { Err } from "../../helpers";
 
 const RECONNECT_DELAY = 1_000;
 
@@ -88,9 +89,15 @@ export class WebRTCPeerChannel implements PeerChannel {
     return remaining <= 0;
   }
 
-  write(msg: PeerMessage) {
+  // returns true if writing can continue
+  write(msg: PeerMessage): boolean {
     if (!this.dataChannel) {
-      return;
+      this.handleError(
+        new FatalError("Data channel does not exist", "connection_interrupted"),
+      );
+      console.error("dataChannel 1", { dataChannel: this.dataChannel });
+
+      return false;
     }
 
     if (this.dataChannel.readyState !== "open") {
@@ -100,23 +107,37 @@ export class WebRTCPeerChannel implements PeerChannel {
           "connection_interrupted",
         ),
       );
-      console.error("dataChannel", { dataChannel: this.dataChannel });
-      return;
+      console.error("dataChannel 2", { dataChannel: this.dataChannel });
+      return false;
     }
 
     const encoded = TransferProtocol.encode(msg);
 
+    const shouldContinue = !this.hasBackpressure();
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.dataChannel.send(encoded as any);
+
+    return shouldContinue;
   }
 
   private handleError(anyError: unknown): void {
     const applicationError = applicationErrorFromUnknown(anyError);
-    this._errorSubscribers.notify(applicationError);
 
     if (applicationError instanceof RestarableError) {
-      return this.restart();
+      console.error("RestartableError on peer connection", {
+        error: applicationError,
+      });
+      // TODO: data-channel-failure is something that happens in the end...
+      // need to reconnect
+      return; //when channel is closed, it will reconnect by itself
     }
+    this._errorSubscribers.notify(applicationError);
+
+    // TODO: sometimes this will reconnect forever?
+    // if (applicationError instanceof RestarableError) {
+    //   return this.restart();
+    // }
 
     this._errored = true;
     this._reset();
@@ -161,6 +182,10 @@ export class WebRTCPeerChannel implements PeerChannel {
     });
 
     dataChannel.addEventListener("close", () => {
+      if (this.onConnectionState) {
+        this.onConnectionState("disconnected");
+      }
+
       console.error("DATACHANNEL CLOSED", {
         dataChannel,
       });
@@ -171,8 +196,6 @@ export class WebRTCPeerChannel implements PeerChannel {
       });
 
       this.handleError(ev.error);
-
-      // no reconnect here?
     });
 
     dataChannel.addEventListener("bufferedamountlow", () => {
@@ -251,7 +274,11 @@ export class WebRTCPeerChannel implements PeerChannel {
       )) as UniversalSignal;
 
       if (type === "signal") {
-        this.peer!.signal(value);
+        try {
+          this.peer!.signal(value);
+        } catch (err) {
+          console.warn("Peer failed to signal", err);
+        }
       } else {
         for (const cand of value) {
           try {

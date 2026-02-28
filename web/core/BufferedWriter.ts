@@ -1,3 +1,8 @@
+export interface IBufferedWriter {
+  write(chunk: Uint8Array): void;
+  flush(): void;
+}
+
 export class BufferedWriter {
   private buffer: Uint8Array;
   private pos = 0;
@@ -35,4 +40,18 @@ export class BufferedWriter {
       this.pos = 0;
     }
   }
+}
+
+export class UnBufferedWriter {
+  constructor(
+    private chunkSize: number,
+    private underlyingWrite: (data: Uint8Array) => void,
+  ) {}
+
+  write(chunk: Uint8Array): void {
+    // send as whole
+    this.underlyingWrite(chunk);
+  }
+
+  flush(): void {}
 }
