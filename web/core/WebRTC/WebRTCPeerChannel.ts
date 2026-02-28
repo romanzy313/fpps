@@ -170,6 +170,8 @@ export class WebRTCPeerChannel implements PeerChannel {
         error: ev.error,
       });
 
+      this.handleError(ev.error);
+
       // no reconnect here?
     });
 

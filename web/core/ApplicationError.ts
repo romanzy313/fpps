@@ -71,14 +71,19 @@ export class RestarableError extends Error {
   }
 
   static fromUnknown(cause: unknown): RestarableError | null {
-    if (cause instanceof Error) {
-      if (
-        cause.name === "OperationError" &&
-        cause.message.includes("User-Initiated Abort")
-      ) {
-        return new RestarableError(cause.message, "connection_aborted");
-      }
+    // https://developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel/error_event
+    if (cause instanceof RTCError) {
+      return new RestarableError(cause.message, "connection_interrupted");
     }
+
+    // if (cause instanceof Error) {
+    //   if (
+    //     cause.name === "OperationError" &&
+    //     cause.message.includes("User-Initiated Abort")
+    //   ) {
+    //     return new RestarableError(cause.message, "connection_aborted");
+    //   }
+    // }
 
     return null;
   }
