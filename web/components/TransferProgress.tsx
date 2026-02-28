@@ -43,27 +43,37 @@ export function TransferProgress({
         </span>
         <div className="transfer-progress__stats">
           <span className="transfer-progress__stat-row">
-            <span className="transfer-progress__stat-label">Files</span>
-            <span className="transfer-progress__stat-value">
-              {transferStats.currentIndex} / {transferStats.totalFiles}
+            <span className="transfer-progress__stat-item">
+              <span className="transfer-progress__stat-label">Files</span>
+              <span className="transfer-progress__stat-value">
+                {transferStats.currentIndex} / {transferStats.totalFiles}
+              </span>
             </span>
             <span className="transfer-progress__stat-sep">·</span>
-            <span className="transfer-progress__stat-label">Progress</span>
-            <span className="transfer-progress__stat-value">
-              {formatSize(transferStats.transferredBytes)} /{" "}
-              {formatSize(transferStats.totalBytes)}
+            <span className="transfer-progress__stat-item">
+              <span className="transfer-progress__stat-label">Progress</span>
+              <span className="transfer-progress__stat-value">
+                {formatSize(transferStats.transferredBytes)} /{" "}
+                {formatSize(transferStats.totalBytes)}
+              </span>
             </span>
           </span>
           <span className="transfer-progress__stat-row">
             {isActive && (
               <>
-                <span className="transfer-progress__stat-label">Speed</span>
-                <span className="transfer-progress__stat-value">
-                  {speedText}
+                <span className="transfer-progress__stat-item">
+                  <span className="transfer-progress__stat-label">Speed</span>
+                  <span className="transfer-progress__stat-value">
+                    {speedText}
+                  </span>
                 </span>
                 <span className="transfer-progress__stat-sep">·</span>
-                <span className="transfer-progress__stat-label">ETA</span>
-                <span className="transfer-progress__stat-value">{etaText}</span>
+                <span className="transfer-progress__stat-item">
+                  <span className="transfer-progress__stat-label">ETA</span>
+                  <span className="transfer-progress__stat-value">
+                    {etaText}
+                  </span>
+                </span>
               </>
             )}
           </span>
