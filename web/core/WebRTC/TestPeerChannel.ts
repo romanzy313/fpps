@@ -1,6 +1,6 @@
-import { FatalError } from "./applicationError";
-import { PeerMessage, TransferProtocol } from "./protocol";
-import { PeerChannel } from "./WebRTC/types";
+import { FatalError } from "../ApplicationError";
+import { PeerMessage, TransferProtocol } from "../protocol";
+import { PeerChannel } from "./types";
 
 const maxBackpressure = 1 << 18; // 256kb
 const drainMs = 10;

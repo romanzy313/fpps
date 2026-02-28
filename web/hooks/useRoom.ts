@@ -11,7 +11,7 @@ import {
   zeroTransferStats,
 } from "../core";
 import { usePreventNavigation } from "./usePreventNavigation";
-import { ApplicationError } from "../core/applicationError";
+import { ApplicationError } from "../core/ApplicationError";
 
 const STATS_UPDATE_INTERVAL_MS = 500;
 

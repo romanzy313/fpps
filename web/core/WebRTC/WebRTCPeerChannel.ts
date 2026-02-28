@@ -255,7 +255,7 @@ export class WebRTCPeerChannel implements PeerChannel {
           try {
             await this.peer!.addIceCandidate(cand);
           } catch (err) {
-            // notmal due to async candidate exchange
+            // normal due to async candidate exchange
             console.warn("addIceCandidate error", err);
           }
         }

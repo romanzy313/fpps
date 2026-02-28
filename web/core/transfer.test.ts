@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Uploader } from "./Uploader";
-import { TestPeerChannels } from "./TestPeerChannels";
+import { TestPeerChannels } from "./WebRTC/TestPeerChannel";
 import { Downloader } from "./Downloader";
 import { UnzipInflate } from "fflate";
 import { Unzip } from "fflate";

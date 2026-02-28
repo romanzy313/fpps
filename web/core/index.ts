@@ -1,4 +1,4 @@
-export * from "./applicationError";
+export * from "./ApplicationError";
 
 export * from "./Core";
 
