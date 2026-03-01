@@ -48,7 +48,6 @@ export function useRoom() {
       downloadStatus === "transfer" || uploadStatus === "transfer",
     );
   }, [downloadStatus, uploadStatus]);
-
   usePreventNavigation(
     "A transfer is in progress? Leaving this page will interrupt file sharing.",
     isTransferring,

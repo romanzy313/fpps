@@ -1,13 +1,16 @@
-import { Zip, ZipPassThrough } from "fflate/browser";
+import { Zip, AsyncZipDeflate } from "fflate/browser";
 
 import { PeerMessage, TransferStatus } from "./protocol";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 import { PeerChannel } from "./WebRTC/types";
-import { BufferedWriter, IBufferedWriter } from "./BufferedWriter";
+import { BufferedWriter } from "./BufferedWriter";
 import { TransferStats, transferStatsFromFiles } from "./TransferStats";
 import { TransferSpeed } from "./TransferSpeed";
 
 const CHUNK_SIZE = 2 << 15; // 65kb
+const WRITE_BUFFER_SIZE = 70_000;
+// errors to handle:
+// * Uncaught OperationError: Failed to execute 'send' on 'RTCDataChannel': RTCDataChannel send queue is full
 
 export class Uploader {
   private PROGRESS_EVERY_MS = 1000;
@@ -24,9 +27,9 @@ export class Uploader {
     status: "transfer" | "backpressure" | "abort";
     isReading: boolean;
     zip: Zip;
-    // bufferedWriter: IBufferedWriter;
+    bufferedWriter: BufferedWriter;
     reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>;
-    deflate: ZipPassThrough;
+    deflate: AsyncZipDeflate;
   } | null = null;
 
   constructor(private peerChannel: PeerChannel) {
@@ -132,7 +135,15 @@ export class Uploader {
       );
     }
 
-    this.requestZipEnd("abort");
+    if (!this.current) {
+      console.warn("tried to abort when no current exists");
+      return;
+    }
+    this.current.status = "abort";
+
+    this.current.deflate.push(new Uint8Array(0), true);
+    this.current.zip.end();
+    // this.current.zip.terminate(); // TODO: check is this is correct
   }
 
   private next() {
@@ -170,12 +181,14 @@ export class Uploader {
       if (readRes.done) {
         this.stats.currentIndex++;
 
+        // close deflate
+
         if (this.stats.currentIndex === this.files.length) {
-          this.requestZipEnd("done");
+          this.current.zip.end();
+          this.current.deflate.push(new Uint8Array(0), true);
           return;
         }
 
-        // close deflate
         this.current.deflate.push(new Uint8Array(0), true);
 
         const file = this.files[this.stats.currentIndex]!;
@@ -205,12 +218,12 @@ export class Uploader {
     }
 
     // create the current
-    // const bufferedWriter = new BufferedWriter(CHUNK_SIZE, (data) => {
-    //   this.peerChannel.write({
-    //     type: "transfer-chunk",
-    //     value: data,
-    //   });
-    // });
+    const bufferedWriter = new BufferedWriter(WRITE_BUFFER_SIZE, (data) => {
+      this.peerChannel.write({
+        type: "transfer-chunk",
+        value: data,
+      });
+    });
 
     const zip = new Zip((err, data, done) => {
       if (err) {
@@ -222,15 +235,9 @@ export class Uploader {
         throw new Error(`Zip error: ${err.message}`);
       }
 
-      this.peerChannel.write({
-        type: "transfer-chunk",
-        value: data,
-      });
-
-      // bufferedWriter.write(data);
+      bufferedWriter.write(data);
 
       if (done) {
-        // bufferedWriter.flush();
         this.onZipEnd();
       }
     });
@@ -240,23 +247,11 @@ export class Uploader {
     this.current = {
       status: "transfer",
       isReading: false,
-      // bufferedWriter,
+      bufferedWriter,
       zip,
       reader: this.createReader(file),
       deflate: this.createDeflate(file, zip),
     };
-  }
-
-  private requestZipEnd(reason: "done" | "abort") {
-    if (!this.current) {
-      console.warn("REQUESTEND: current not initialized");
-      return;
-    }
-    if (reason === "abort") {
-      this.current.status = "abort";
-    }
-    this.current.deflate.push(new Uint8Array(0), true);
-    this.current.zip.end();
   }
 
   private onZipEnd() {
@@ -264,21 +259,16 @@ export class Uploader {
       throw new Error("current not initialized");
     }
 
+    console.log("called zip end");
+
     if (this.progressInterval) {
       clearInterval(this.progressInterval);
     }
     this.speed.reset(0);
 
-    if (this.current.status === "abort") {
-      this.status.setValue("aborted");
-      this.current = null;
-      return;
-    }
-    // otherwise its done
-
     // this.current.bufferedWriter.flush();
 
-    // Whats going on here?
+    this.current.bufferedWriter.flush();
 
     this.peerChannel.write({
       type: "transfer-stats",
@@ -304,7 +294,6 @@ export class Uploader {
       console.warn("ONDRAIN: unexpected status", this.current.status);
       return;
     }
-
     this.current.status = "transfer";
 
     this.next();
@@ -322,7 +311,9 @@ export class Uploader {
   }
 
   private createDeflate(file: File, zip: Zip) {
-    const deflate = new ZipPassThrough(file.webkitRelativePath || file.name);
+    const deflate = new AsyncZipDeflate(file.webkitRelativePath || file.name, {
+      level: 1, // level 0 fails... TODO: report it
+    });
     zip.add(deflate);
 
     return deflate;

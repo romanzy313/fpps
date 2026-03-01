@@ -74,6 +74,7 @@ export class WebRTCPeerChannel implements PeerChannel {
   }
 
   stop() {
+    console.warn("Datachannel was requested to stop!");
     this._reset();
   }
 
@@ -144,6 +145,7 @@ export class WebRTCPeerChannel implements PeerChannel {
   }
 
   private _reset() {
+    console.warn("datachannel is reset!");
     this._isReady = false;
     this.signaler.stop();
 
@@ -158,6 +160,8 @@ export class WebRTCPeerChannel implements PeerChannel {
   }
 
   dispose() {
+    console.warn("datachannel is disposed!");
+
     this._reset();
     this._messageSubscribers.dispose();
     this._errorSubscribers.dispose();

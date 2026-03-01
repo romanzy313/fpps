@@ -1,8 +1,3 @@
-export interface IBufferedWriter {
-  write(chunk: Uint8Array): void;
-  flush(): void;
-}
-
 export class BufferedWriter {
   private buffer: Uint8Array;
   private pos = 0;
@@ -14,11 +9,31 @@ export class BufferedWriter {
     this.buffer = new Uint8Array(this.chunkSize);
   }
 
+  private writeSplitByChunks(data: Uint8Array): void {
+    if (data.byteLength <= this.chunkSize) {
+      this.underlyingWrite(data);
+      return;
+    }
+
+    const numChunks = Math.ceil(data.byteLength / this.chunkSize);
+
+    console.warn("writing large payload as multiple chunks chunks", {
+      chunkSize: this.chunkSize,
+      numChunks,
+      chunkLength: data.byteLength,
+    });
+
+    for (let i = 0; i < numChunks; i++) {
+      const start = i * this.chunkSize;
+      const end = Math.min(start + this.chunkSize, data.byteLength);
+      this.underlyingWrite(data.slice(start, end));
+    }
+  }
+
   write(chunk: Uint8Array): void {
     // optimization for large chunks
     if (this.pos === 0 && chunk.byteLength >= this.chunkSize) {
-      this.underlyingWrite(chunk);
-      return;
+      this.writeSplitByChunks(chunk);
     }
 
     // if we can buffer, then buffer
@@ -31,7 +46,7 @@ export class BufferedWriter {
     this.flush();
 
     // send as whole
-    this.underlyingWrite(chunk);
+    this.writeSplitByChunks(chunk);
   }
 
   flush(): void {
@@ -40,18 +55,4 @@ export class BufferedWriter {
       this.pos = 0;
     }
   }
-}
-
-export class UnBufferedWriter {
-  constructor(
-    private chunkSize: number,
-    private underlyingWrite: (data: Uint8Array) => void,
-  ) {}
-
-  write(chunk: Uint8Array): void {
-    // send as whole
-    this.underlyingWrite(chunk);
-  }
-
-  flush(): void {}
 }
