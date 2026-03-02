@@ -7,7 +7,7 @@ export function Footer() {
         Created by{" "}
         <ExternalLink href="https://volovoy.com">Roman Volovoy</ExternalLink> •{" "}
         <ExternalLink href="https://github.com/romanzy313/fpps">
-          GitHub
+          Source Code
         </ExternalLink>{" "}
         •{" "}
         <ExternalLink href="https://github.com/romanzy313/fpps/blob/main/LICENSE">

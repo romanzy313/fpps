@@ -1,41 +1,30 @@
 # Build web app
-FROM node:22-alpine AS web
-
+FROM node:24-alpine AS web-builder
 WORKDIR /app
-
-COPY package.json pnpm-lock.yaml  ./
-
-# Force pnpm location for consistency
+COPY package.json pnpm-lock.yaml ./
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-
 RUN corepack enable pnpm
-
-# Install packages with cache mount for pnpm store
 RUN --mount=type=cache,target=/pnpm/store \
     pnpm install --frozen-lockfile --prefer-offline
-
 COPY . .
-
 RUN pnpm build
 
 # Build server
-FROM golang:1.25-alpine AS builder
-
+FROM golang:1.25-alpine AS go-builder
 WORKDIR /app
-
 COPY . .
+COPY --from=web-builder /app/dist ./dist
+# No dependencies :)
+RUN CGO_ENABLED=0 go build -o main .
 
-COPY --from=web /app/dist ./dist
-
-# no dependencies :)
-RUN go build main.go
 
 # Deploy it
-FROM scratch AS deploy
-
+FROM scratch AS runtime
 WORKDIR /app
+COPY --from=go-builder /app/main /fpps
+ENTRYPOINT ["/fpps"]
 
-COPY --from=builder /app/main ./server
-
-CMD ["./server"]
+# For build artifactors
+FROM scratch AS binaries
+COPY --from=go-builder /app/main /fpps
