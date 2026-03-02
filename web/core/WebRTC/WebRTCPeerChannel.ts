@@ -58,9 +58,6 @@ export class WebRTCPeerChannel implements PeerChannel {
   listenOnMessage(cb: (msg: PeerMessage) => void) {
     this._messageSubscribers.subscribe(cb);
   }
-  listenOnDrain(cb: () => void) {
-    this.onDrain = cb;
-  }
   listenOnError = this._errorSubscribers.subscribe;
 
   start() {
@@ -78,7 +75,7 @@ export class WebRTCPeerChannel implements PeerChannel {
     this._reset();
   }
 
-  hasBackpressure(): boolean {
+  private hasBackpressure(): boolean {
     if (!this.dataChannel) {
       return false;
       // throw new Error("Assertion failed: no dataChannel");
@@ -90,8 +87,7 @@ export class WebRTCPeerChannel implements PeerChannel {
     return remaining <= 0;
   }
 
-  // returns true if writing can continue
-  write(msg: PeerMessage): boolean {
+  private checkWrite(): boolean {
     if (!this.dataChannel) {
       this.handleError(
         new FatalError("Data channel does not exist", "connection_interrupted"),
@@ -112,35 +108,34 @@ export class WebRTCPeerChannel implements PeerChannel {
       return false;
     }
 
+    return true;
+  }
+
+  // returns true if writing can continue
+  write(msg: PeerMessage, cb?: () => void): boolean {
+    if (!this.checkWrite()) {
+      return false;
+    }
+
     const encoded = TransferProtocol.encode(msg);
 
     const shouldContinue = !this.hasBackpressure();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.dataChannel.send(encoded as any);
+    this.dataChannel!.send(encoded as any);
+
+    if (!shouldContinue && cb) {
+      this.dataChannel!.addEventListener("bufferedamountlow", cb, {
+        once: true,
+      });
+    }
 
     return shouldContinue;
   }
 
   writeAsync(msg: PeerMessage): Promise<void> {
-    if (!this.dataChannel) {
-      this.handleError(
-        new FatalError("Data channel does not exist", "connection_interrupted"),
-      );
-      console.error("dataChannel 1", { dataChannel: this.dataChannel });
-
-      throw new Error("BLAH 1");
-    }
-
-    if (this.dataChannel.readyState !== "open") {
-      this.handleError(
-        new FatalError(
-          "WebRTC connection is not open",
-          "connection_interrupted",
-        ),
-      );
-      console.error("dataChannel 2", { dataChannel: this.dataChannel });
-      throw new Error("BLAH 2");
+    if (!this.checkWrite()) {
+      return Promise.resolve();
     }
 
     const encoded = TransferProtocol.encode(msg);
@@ -148,10 +143,37 @@ export class WebRTCPeerChannel implements PeerChannel {
     const shouldContinue = !this.hasBackpressure();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.dataChannel.send(encoded as any);
+    this.dataChannel!.send(encoded as any);
 
     if (shouldContinue) {
       return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      console.log("Backpressuring");
+      this.dataChannel!.addEventListener(
+        "bufferedamountlow",
+        () => {
+          resolve();
+        },
+        { once: true },
+      );
+    });
+  }
+  writeWait(msg: PeerMessage): Promise<void> | null {
+    if (!this.checkWrite()) {
+      return Promise.resolve();
+    }
+
+    const encoded = TransferProtocol.encode(msg);
+
+    const shouldContinue = !this.hasBackpressure();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.dataChannel!.send(encoded as any);
+
+    if (shouldContinue) {
+      return null;
     }
 
     return new Promise((resolve) => {

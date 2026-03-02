@@ -1,17 +1,12 @@
-import { Zip, AsyncZipDeflate } from "fflate/browser";
-
 import { PeerMessage, TransferStatus } from "./protocol";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 import { PeerChannel } from "./WebRTC/types";
-import { BufferedWriter } from "./BufferedWriter";
 import { TransferStats, transferStatsFromFiles } from "./TransferStats";
 import { TransferSpeed } from "./TransferSpeed";
-import { downloadZip, makeZip, predictLength } from "client-zip";
+import { makeZip, predictLength } from "client-zip";
+import { ChunkSplitterTransformer } from "./ChunkSplitterTransformer";
 
 const CHUNK_SIZE = 2 << 15; // 65kb
-const WRITE_BUFFER_SIZE = 70_000;
-// errors to handle:
-// * Uncaught OperationError: Failed to execute 'send' on 'RTCDataChannel': RTCDataChannel send queue is full
 
 export class Uploader {
   private PROGRESS_EVERY_MS = 1000;
@@ -24,22 +19,8 @@ export class Uploader {
   private stats: TransferStats = transferStatsFromFiles([]);
   private speed = new TransferSpeed();
 
-  private current: {
-    status: "transfer" | "backpressure" | "abort";
-    isReading: boolean;
-    zip: Zip;
-    bufferedWriter: BufferedWriter;
-    reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>;
-    deflate: AsyncZipDeflate;
-  } | null = null;
-
   constructor(private peerChannel: PeerChannel) {
     peerChannel.listenOnMessage(this.onPeerMessage.bind(this));
-    peerChannel.listenOnDrain(this.onDrain.bind(this));
-  }
-
-  private hasBackpressure() {
-    return this.peerChannel.hasBackpressure();
   }
 
   getStats() {
@@ -100,29 +81,12 @@ export class Uploader {
     }
 
     const stream = makeZip(
-      this.files.map(
-        (file) => ({
-          name: file.webkitRelativePath || file.name,
-          size: file.size,
-          input: file,
-        }),
-        // new File(
-        //   [file],
-        //   // name a file
-        //   file.webkitRelativePath || file.name,
-        //   {
-        //     type: file.type,
-        //     lastModified: file.lastModified,
-        //   },
-        // ),
-      ),
+      this.files.map((file) => ({
+        name: file.webkitRelativePath || file.name,
+        size: file.size,
+        input: file,
+      })),
     );
-
-    const reader = stream
-      .pipeThrough(
-        new TransformStream(new ChunkSplitterTransformer(CHUNK_SIZE)),
-      )
-      .getReader();
 
     this.progressInterval = setInterval(() => {
       this.speed.tick(this.stats.transferredBytes);
@@ -134,18 +98,28 @@ export class Uploader {
         value: this.stats,
       });
     }, this.PROGRESS_EVERY_MS);
+
     this.stats.currentIndex = 0;
     this.stats.transferredBytes = 0;
+
     this.speed.reset(this.stats.totalBytes);
 
-    try {
-      const predicted = Number(predictLength(this.files));
-      const actual = this.stats.totalBytes;
+    const predicted = Number(predictLength(this.files));
+    const totalRaw = this.stats.totalBytes;
 
+    const reader = stream
+      .pipeThrough(
+        new TransformStream(new ChunkSplitterTransformer(CHUNK_SIZE)),
+      )
+      .getReader();
+
+    this.status.setValue("transfer");
+
+    try {
       console.log("file prediction", {
         predicted,
-        actual,
-        difference: actual - predicted,
+        totalRaw,
+        difference: totalRaw - predicted,
       });
 
       await this.peerChannel.writeAsync({
@@ -154,6 +128,9 @@ export class Uploader {
       });
 
       while (true) {
+        if (this.status.value === "aborted") {
+          return;
+        }
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -172,65 +149,27 @@ export class Uploader {
 
       reader.releaseLock();
 
-      this.status.setValue("idle");
+      this.status.setValue("done");
+      //roll back stats to 100%
+      this.stats.transferredBytes = this.stats.totalBytes;
     } catch (err) {
       console.error("error while transferring");
-      this.status.setValue("idle"); // status of error is okay here?
+      this.status.setValue("idle");
       stream.cancel(err);
     } finally {
       console.log("actually transferred", {
         actual: this.stats.transferredBytes,
+        predicted,
+        totalRaw,
+        differenceRaw: this.stats.transferredBytes - totalRaw,
+        differencePredicted: this.stats.transferredBytes - predicted,
       });
 
+      this.speed.reset(0);
       if (this.progressInterval) {
         clearInterval(this.progressInterval);
       }
-      // this.stats.transferredBytes = this.stats.totalBytes;
-      this.speed.reset(0);
     }
-  }
-
-  private startTransfer() {
-    if (!this.peerChannel.isReady()) {
-      throw new Error("Peer channel is not ready to upload");
-    }
-
-    if (this.status.value === "transfer") {
-      throw new Error("Cannot start transfer: uploader is already uploading");
-    }
-
-    if (this.files.length === 0) {
-      throw new Error("No files to transfer");
-    }
-
-    if (this.current) {
-      throw new Error("Current was not cleaned up");
-    }
-
-    this.status.setValue("transfer");
-
-    this.peerChannel.write({
-      type: "transfer-started",
-      value: this.stats,
-    });
-
-    this.progressInterval = setInterval(() => {
-      this.speed.tick(this.stats.transferredBytes);
-
-      this.peerChannel.write({
-        type: "transfer-stats",
-        value: this.stats,
-      });
-    }, this.PROGRESS_EVERY_MS);
-
-    this.stats.currentIndex = 0;
-    this.stats.transferredBytes = 0;
-
-    this.speed.reset(this.stats.totalBytes);
-
-    this.initCurrent();
-
-    this.next();
   }
 
   // peer sends this
@@ -241,235 +180,6 @@ export class Uploader {
       );
     }
 
-    if (!this.current) {
-      console.warn("tried to abort when no current exists");
-      return;
-    }
-    this.current.status = "abort";
-
-    this.current.deflate.push(new Uint8Array(0), true);
-    this.current.zip.end();
-    // this.current.zip.terminate(); // TODO: check is this is correct
-  }
-
-  private next() {
-    if (!this.current) {
-      throw new Error("Current transfer not defined 1");
-    }
-
-    if (this.current.status === "abort") {
-      return;
-    }
-
-    if (this.current.status !== "transfer") {
-      console.error("NEXT: unexpected status of", this.current.status);
-      return;
-    }
-
-    if (this.hasBackpressure()) {
-      this.current.status = "backpressure";
-      return; // awaiting drain
-    }
-
-    if (this.current.isReading) {
-      // This is just sanity assurance
-      console.warn("Concurrent read detected");
-      return;
-    }
-    this.current.isReading = true;
-
-    this.current.reader.read().then((readRes) => {
-      if (!this.current) {
-        throw new Error("Current transfer not defined 2");
-      }
-      this.current.isReading = false;
-
-      if (readRes.done) {
-        this.stats.currentIndex++;
-
-        // close deflate
-
-        if (this.stats.currentIndex === this.files.length) {
-          this.current.zip.end();
-          this.current.deflate.push(new Uint8Array(0), true);
-          return;
-        }
-
-        this.current.deflate.push(new Uint8Array(0), true);
-
-        const file = this.files[this.stats.currentIndex]!;
-
-        // update the reader and deflate to the next file
-        this.current.reader = this.createReader(file);
-        this.current.deflate = this.createDeflate(file, this.current.zip);
-
-        this.next();
-
-        return;
-      }
-
-      const value = readRes.value;
-
-      this.stats.transferredBytes += value.byteLength;
-
-      this.current.deflate.push(value);
-
-      this.next();
-    });
-  }
-
-  private initCurrent() {
-    if (this.current) {
-      throw new Error("current already inited");
-    }
-
-    // create the current
-    const bufferedWriter = new BufferedWriter(WRITE_BUFFER_SIZE, (data) => {
-      this.peerChannel.write({
-        type: "transfer-chunk",
-        value: data,
-      });
-    });
-
-    const zip = new Zip((err, data, done) => {
-      if (err) {
-        // when connection error is enountered, it thows here:
-        // Error: Zip error: Cannot send: data channel is not open
-        // TODO: unified error handling
-        // FIXME: error handling! this is restarable
-        // The uploader needs to be able to emit errors
-        throw new Error(`Zip error: ${err.message}`);
-      }
-
-      bufferedWriter.write(data);
-
-      if (done) {
-        this.onZipEnd();
-      }
-    });
-
-    const file = this.files[0]!;
-
-    this.current = {
-      status: "transfer",
-      isReading: false,
-      bufferedWriter,
-      zip,
-      reader: this.createReader(file),
-      deflate: this.createDeflate(file, zip),
-    };
-  }
-
-  private onZipEnd() {
-    if (!this.current) {
-      throw new Error("current not initialized");
-    }
-
-    console.log("called zip end");
-
-    if (this.progressInterval) {
-      clearInterval(this.progressInterval);
-    }
-    this.speed.reset(0);
-
-    // this.current.bufferedWriter.flush();
-
-    this.current.bufferedWriter.flush();
-
-    this.peerChannel.write({
-      type: "transfer-stats",
-      value: this.stats,
-    });
-
-    this.peerChannel.write({ type: "transfer-done" });
-
-    this.status.setValue("done");
-    this.current = null;
-  }
-
-  private onDrain() {
-    if (!this.current) {
-      return;
-    }
-
-    if (this.current.status === "abort") {
-      return;
-    }
-
-    if (this.current.status === "transfer") {
-      console.warn("ONDRAIN: unexpected status", this.current.status);
-      return;
-    }
-    this.current.status = "transfer";
-
-    this.next();
-  }
-
-  private createReader(file: File) {
-    const reader = file
-      .stream()
-      .pipeThrough(
-        new TransformStream(new ChunkSplitterTransformer(CHUNK_SIZE)),
-      )
-      .getReader();
-
-    return reader;
-  }
-
-  private createDeflate(file: File, zip: Zip) {
-    const deflate = new AsyncZipDeflate(file.webkitRelativePath || file.name, {
-      level: 1, // level 0 fails... TODO: report it
-    });
-    zip.add(deflate);
-
-    return deflate;
-  }
-}
-
-class ChunkSplitterTransformer implements Transformer<Uint8Array, Uint8Array> {
-  private readonly chunkSize: number;
-  private buffer: Uint8Array;
-  private bufferUsed: number;
-
-  constructor(chunkSize: number = 65536) {
-    // 64KB default
-    this.chunkSize = chunkSize;
-    this.buffer = new Uint8Array(chunkSize);
-    this.bufferUsed = 0;
-  }
-
-  transform(
-    chunk: Uint8Array,
-    controller: TransformStreamDefaultController<Uint8Array>,
-  ): void {
-    let chunkOffset = 0;
-
-    while (chunkOffset < chunk.length) {
-      // Calculate how much we can copy to buffer
-      const available = this.chunkSize - this.bufferUsed;
-      const toCopy = Math.min(available, chunk.length - chunkOffset);
-
-      // Copy data to buffer
-      this.buffer.set(
-        chunk.subarray(chunkOffset, chunkOffset + toCopy),
-        this.bufferUsed,
-      );
-      this.bufferUsed += toCopy;
-      chunkOffset += toCopy;
-
-      // If buffer is full, enqueue it
-      if (this.bufferUsed === this.chunkSize) {
-        controller.enqueue(this.buffer.slice(0, this.chunkSize));
-        this.bufferUsed = 0;
-      }
-    }
-  }
-
-  flush(controller: TransformStreamDefaultController<Uint8Array>): void {
-    // Send any remaining data
-    if (this.bufferUsed > 0) {
-      controller.enqueue(this.buffer.slice(0, this.bufferUsed));
-      this.bufferUsed = 0;
-    }
+    this.status.setValue("aborted");
   }
 }

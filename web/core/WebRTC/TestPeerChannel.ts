@@ -15,7 +15,6 @@ class TestPeerChannel implements PeerChannel {
   _remainingBytes = maxBackpressure;
 
   _onDataCallback: ((message: PeerMessage) => void) | null = null;
-  _onDrainedCallback: (() => void) | null = null;
   _receivedMessages: PeerMessage[] = [];
   _sendMessages: PeerMessage[] = [];
 
@@ -31,11 +30,11 @@ class TestPeerChannel implements PeerChannel {
     return this._ready;
   }
 
-  hasBackpressure(): boolean {
+  private hasBackpressure(): boolean {
     return this._remainingBytes < 0;
   }
 
-  write(message: PeerMessage): boolean {
+  write(message: PeerMessage, cb?: () => void): boolean {
     if (!this._ready) {
       throw new Error("Not ready");
     }
@@ -49,11 +48,8 @@ class TestPeerChannel implements PeerChannel {
     setTimeout(() => {
       this._remainingBytes += size;
 
-      if (this._remainingBytes > 0) {
-        if (this._onDrainedCallback) {
-          // This technically behaves incorrectly. The web sends it only once
-          this._onDrainedCallback();
-        }
+      if (cb && this._remainingBytes > 0) {
+        cb();
       }
     }, drainMs);
 
@@ -85,10 +81,6 @@ class TestPeerChannel implements PeerChannel {
         resolve();
       }, drainMs);
     });
-  }
-
-  listenOnDrain(cb: () => void): void {
-    this._onDrainedCallback = cb;
   }
 
   listenOnMessage(cb: (message: PeerMessage) => void): void {

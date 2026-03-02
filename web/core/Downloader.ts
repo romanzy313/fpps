@@ -139,6 +139,7 @@ export class Downloader {
 
   private async done() {
     this.transferFinished();
+    this.stats.transferredBytes = this.stats.totalBytes;
 
     this.status.setValue("done");
     if (!this.writer) {

@@ -13,13 +13,12 @@ export interface Signaler {
 
 export interface PeerChannel {
   isReady(): boolean;
-  hasBackpressure(): boolean;
   listenOnMessage(cb: (msg: PeerMessage) => void): void;
-  listenOnDrain(cb: () => void): void;
   listenOnError(cb: (err: ApplicationError) => void): void;
   start(): void;
   stop(): void;
 
-  write(msg: PeerMessage): boolean;
+  write(msg: PeerMessage, cb?: () => void): boolean;
   writeAsync(msg: PeerMessage): Promise<void>;
+  // writeWait(msg: PeerMessage): Promise<void> | null;
 }
