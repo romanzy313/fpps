@@ -1,19 +1,14 @@
-import { useState } from "preact/hooks";
 import { getBaseUrl } from "../utils/getBaseUrl";
+import { Toast } from "../utils/toast";
 
 export function ShareLink({ code }: { code: string }) {
-  const [showCopied, setShowCopied] = useState(false);
-
   const baseUrl = getBaseUrl();
 
   const shareLink = `${baseUrl}/room#${code}`;
 
   function copyToClipboard() {
     navigator.clipboard.writeText(shareLink).then(() => {
-      setShowCopied(true);
-      setTimeout(() => {
-        setShowCopied(false);
-      }, 2000);
+      Toast.info("Copied to clipboard");
     });
   }
 
@@ -37,10 +32,6 @@ export function ShareLink({ code }: { code: string }) {
         >
           {shareLink}
         </div>
-      </div>
-
-      <div className={`copy-popup ${showCopied ? "copy-popup--visible" : ""}`}>
-        Copied to clipboard!
       </div>
     </div>
   );

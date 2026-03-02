@@ -49,7 +49,7 @@ export class Core {
   private downloader: Downloader;
 
   uploadSpeedValue() {
-    return this.uploader.getSpeed();
+    return this.uploader.getProgress();
   }
   get uploaderStatus() {
     return this.uploader.status;
@@ -147,9 +147,10 @@ export class Core {
     this.error.dispose();
   }
 
-  // public functions
+  // TODO: this needs to remove duplicates
+  // TODO: store files as a tree for display
   public addFiles(files: File[]) {
-    this.uploader.setFiles([...this.uploader.getFiles(), ...files]);
+    this.uploader.addFiles(files);
 
     const parsedFiles = files.map(parseFile);
 

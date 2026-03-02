@@ -1,4 +1,4 @@
-import { Toast } from "../utils/Toast";
+import { Toast } from "../utils/toast";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 import { TRANSFER_PROGRESS_EVERY_MS } from "./consts";
 import { PeerMessage, TransferStatus } from "./protocol";
@@ -116,6 +116,8 @@ export class Downloader {
         if (!this.writer) {
           throw new Error("Cannot complete a transfer (no writer)");
         }
+
+        Toast.success("Download complete");
 
         this.status.setValue("done");
         this.progress.done();

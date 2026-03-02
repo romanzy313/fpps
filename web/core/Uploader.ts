@@ -5,7 +5,7 @@ import { TransferProgress } from "./TransferSpeed";
 import { makeZip, predictLength } from "client-zip";
 import { ChunkSplitterTransformer } from "./ChunkSplitterTransformer";
 import { TRANSFER_CHUNK_BYTES, TRANSFER_PROGRESS_EVERY_MS } from "./consts";
-import { Toast } from "../utils/Toast";
+import { Toast } from "../utils/toast";
 
 export class Uploader {
   private files: File[] = [];
@@ -22,12 +22,13 @@ export class Uploader {
     });
   }
 
-  getSpeed() {
+  getProgress() {
     return this.progress.value;
   }
 
-  getFiles() {
-    return this.files;
+  addFiles(files: File[]) {
+    // TODO: filter existsing
+    this.setFiles([...this.files, ...files]);
   }
 
   setFiles(files: File[]) {
@@ -128,6 +129,8 @@ export class Uploader {
       reader.releaseLock();
 
       this.status.setValue("done");
+
+      Toast.success("Upload complete");
 
       // set progress to 100%
       this.progress.done();
