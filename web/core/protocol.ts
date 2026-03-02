@@ -1,24 +1,20 @@
 import { TransferSummary } from "./TransferStats";
 
-export type TransferStatus = "idle" | "transfer" | "done" | "aborted";
+export type TransferStatus = "idle" | "transfer" | "done" | "aborted" | "error";
 
 export type PreviewContent = {
   stats: TransferSummary;
 };
 
-// export type TransferStart = {
-//   totalFiles: number;
-//   totalBytes: number;
-//   totalNetworkBytes: number;
-// };
-// TODO: send speed updates with stats
+type Payload<K, V> = { type: K; value: V };
 export type PeerMessage =
-  | { type: "transfer-started"; value: { transferSizeBytes: number } }
-  | { type: "transfer-start" }
-  | { type: "transfer-chunk"; value: Uint8Array }
-  | { type: "transfer-abort" }
-  | { type: "transfer-done" }
-  | { type: "preview-content"; value: PreviewContent };
+  | Payload<"transfer-started", { transferSizeBytes: number }>
+  | Payload<"transfer-start", void>
+  | Payload<"transfer-chunk", Uint8Array>
+  | Payload<"transfer-error", { message: string }>
+  | Payload<"transfer-abort", void>
+  | Payload<"transfer-done", void>
+  | Payload<"preview-content", PreviewContent>;
 
 const CHUNK_START = "c".charCodeAt(0);
 const JSON_START = "{".charCodeAt(0);

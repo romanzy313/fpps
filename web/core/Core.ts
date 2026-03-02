@@ -56,7 +56,7 @@ export class Core {
   }
 
   downloadSpeedValue() {
-    return this.downloader.getSpeed();
+    return this.downloader.getProgress();
   }
   get downloaderStatus() {
     return this.downloader.status;

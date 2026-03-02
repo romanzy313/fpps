@@ -39,13 +39,15 @@ export function Peer({
         return "Completed";
       case "aborted":
         return "Download stopped";
+      case "error":
+        return "Transfer error, please try again";
     }
   }
 
   return (
     <div className="card file-section">
       <div className="file-section__header">
-        <h2 className="file-section__title">Peer&apos;s Files</h2>
+        <h2 className="file-section__title">Peer's Files</h2>
         <div className="file-section__summary">
           <div className="file-section__summary-item">
             <span className="file-section__summary-label">Files:</span>

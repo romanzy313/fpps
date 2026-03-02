@@ -102,6 +102,8 @@ export function Me({
         return "Completed";
       case "aborted":
         return "Upload stopped";
+      case "error":
+        return "Transfer error, please try again";
     }
   }
 

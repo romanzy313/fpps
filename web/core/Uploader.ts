@@ -5,6 +5,7 @@ import { TransferProgress } from "./TransferSpeed";
 import { makeZip, predictLength } from "client-zip";
 import { ChunkSplitterTransformer } from "./ChunkSplitterTransformer";
 import { TRANSFER_CHUNK_BYTES, TRANSFER_PROGRESS_EVERY_MS } from "./consts";
+import { Toast } from "../utils/Toast";
 
 export class Uploader {
   private files: File[] = [];
@@ -15,6 +16,10 @@ export class Uploader {
 
   constructor(private peerChannel: PeerChannel) {
     peerChannel.listenOnMessage(this.onPeerMessage.bind(this));
+    peerChannel.listenOnError((err) => {
+      // do not try to send error, connection failed
+      this.internalError(err.toString());
+    });
   }
 
   getSpeed() {
@@ -33,9 +38,9 @@ export class Uploader {
   }
 
   stop() {
-    this.peerChannel.write({ type: "transfer-abort" });
+    this.peerChannel.write({ type: "transfer-abort", value: undefined });
 
-    this.abortTransfer();
+    this.internalAbort();
   }
 
   private onPeerMessage(message: PeerMessage) {
@@ -46,14 +51,13 @@ export class Uploader {
         break;
       case "transfer-abort":
         if (this.status.value === "transfer") {
-          this.abortTransfer();
+          this.internalAbort();
         }
         break;
+      case "transfer-error":
+        this.internalError(message.value.message);
+        break;
     }
-  }
-
-  dispose() {
-    this.status.dispose();
   }
 
   private async startTransferAsync() {
@@ -68,6 +72,8 @@ export class Uploader {
     if (this.files.length === 0) {
       throw new Error("No files to transfer");
     }
+
+    this.status.setValue("transfer");
 
     const predictedBytes = Number(predictLength(this.files));
 
@@ -88,7 +94,7 @@ export class Uploader {
       )
       .getReader();
 
-    this.status.setValue("transfer");
+    const shouldStop = () => this.status.value !== "transfer";
 
     try {
       await this.peerChannel.writeAsync({
@@ -99,7 +105,8 @@ export class Uploader {
       });
 
       while (true) {
-        if (this.status.value === "aborted") {
+        if (shouldStop()) {
+          this.progress.reset();
           return;
         }
         const { done, value } = await reader.read();
@@ -115,6 +122,7 @@ export class Uploader {
 
       await this.peerChannel.writeAsync({
         type: "transfer-done",
+        value: undefined,
       });
 
       reader.releaseLock();
@@ -123,18 +131,15 @@ export class Uploader {
 
       // set progress to 100%
       this.progress.done();
-    } catch (err) {
-      this.progress.reset(0);
+    } catch (cause) {
+      this.handleAndTrySendError(cause);
 
-      console.error("error while transferring", err);
-      this.status.setValue("idle");
-
-      reader.cancel(err);
+      reader.cancel();
     }
   }
 
   // peer sends this
-  private abortTransfer() {
+  private internalAbort() {
     if (this.status.value !== "transfer") {
       throw new Error(
         "Cannot abort transfer: uploader is not in uploading state",
@@ -142,5 +147,35 @@ export class Uploader {
     }
 
     this.status.setValue("aborted");
+  }
+
+  private async internalError(message: string) {
+    if (this.status.value !== "transfer") {
+      return;
+    }
+
+    Toast.error(`Transfer error`, message);
+
+    this.status.setValue("error");
+    this.progress.reset();
+  }
+
+  private async handleAndTrySendError(cause: unknown) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+
+    this.internalError(message);
+
+    try {
+      await this.peerChannel.writeAsync({
+        type: "transfer-error",
+        value: { message },
+      });
+    } catch {
+      // do nothing
+    }
+  }
+
+  dispose() {
+    this.status.dispose();
   }
 }

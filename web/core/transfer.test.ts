@@ -18,6 +18,7 @@ describe("TestPeerChannels", () => {
 
     peerA.write({
       type: "transfer-done",
+      value: undefined,
     });
 
     vi.waitFor(() => {

@@ -89,23 +89,23 @@ export class WebRTCPeerChannel implements PeerChannel {
 
   private checkWrite(): boolean {
     if (!this.dataChannel) {
-      this.handleError(
-        new FatalError("Data channel does not exist", "connection_interrupted"),
+      const err = new FatalError(
+        "Data channel does not exist",
+        "connection_interrupted",
       );
-      console.error("dataChannel 1", { dataChannel: this.dataChannel });
+      this.handleError(err);
 
-      return false;
+      throw err;
     }
 
     if (this.dataChannel.readyState !== "open") {
-      this.handleError(
-        new FatalError(
-          "WebRTC connection is not open",
-          "connection_interrupted",
-        ),
+      const err = new FatalError(
+        "WebRTC connection is not open",
+        "connection_interrupted",
       );
-      console.error("dataChannel 2", { dataChannel: this.dataChannel });
-      return false;
+      this.handleError(err);
+
+      throw err;
     }
 
     return true;
@@ -150,7 +150,6 @@ export class WebRTCPeerChannel implements PeerChannel {
     }
 
     return new Promise((resolve) => {
-      console.log("Backpressuring");
       this.dataChannel!.addEventListener(
         "bufferedamountlow",
         () => {
@@ -191,6 +190,8 @@ export class WebRTCPeerChannel implements PeerChannel {
   private handleError(anyError: unknown): void {
     const applicationError = applicationErrorFromUnknown(anyError);
 
+    this._errorSubscribers.notify(applicationError);
+
     if (applicationError instanceof RestarableError) {
       console.error("RestartableError on peer connection", {
         error: applicationError,
@@ -199,7 +200,6 @@ export class WebRTCPeerChannel implements PeerChannel {
       // need to reconnect
       return; //when channel is closed, it will reconnect by itself
     }
-    this._errorSubscribers.notify(applicationError);
 
     // TODO: sometimes this will reconnect forever?
     // if (applicationError instanceof RestarableError) {
