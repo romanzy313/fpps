@@ -1,13 +1,16 @@
 import { FullFilesState } from "../core/Core";
-import { TransferSpeedValue, TransferStats, TransferStatus } from "../core";
+import {
+  TransferProgress,
+  TransferProgressValue,
+  TransferStatus,
+} from "../core";
 import { formatSize } from "../utils/formatSize";
-import { TransferProgress } from "./TransferProgress";
+import { TransferProgressDisplay } from "./TransferProgressDisplay";
 
 type Props = {
   peerFiles: FullFilesState;
   downloadStatus: TransferStatus;
-  transferStats: TransferStats;
-  transferSpeed: TransferSpeedValue | null;
+  transferSpeed: TransferProgressValue;
   startDownload: () => void;
   abortDownload: () => void;
 };
@@ -15,12 +18,11 @@ type Props = {
 export function Peer({
   peerFiles,
   downloadStatus,
-  transferStats,
   transferSpeed,
   startDownload,
   abortDownload,
 }: Props) {
-  const fileCount = peerFiles.totalCount;
+  const fileCount = peerFiles.totalFiles;
   const fileSizeText = formatSize(peerFiles.totalBytes);
 
   function getStatusText(): string {
@@ -73,10 +75,9 @@ export function Peer({
         {getStatusText()}
       </div>
 
-      <TransferProgress
-        stats={transferStats}
-        speed={transferSpeed}
-      ></TransferProgress>
+      <TransferProgressDisplay
+        progress={transferSpeed}
+      ></TransferProgressDisplay>
 
       {/* Spacer to match Me component's upload section height on desktop */}
       <div className="upload-section-spacer"></div>

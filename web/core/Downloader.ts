@@ -1,15 +1,16 @@
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 import { PeerMessage, TransferStatus } from "./protocol";
-import { TransferSpeed } from "./TransferSpeed";
-import { TransferStats, zeroTransferStats } from "./TransferStats";
+import { TransferProgress } from "./TransferSpeed";
 import { PeerChannel } from "./WebRTC/types";
+
+const PROGRESS_EVERY_MS = 500;
 
 export class Downloader {
   status = new ValueSubscriber<TransferStatus>("idle");
-  private stats: TransferStats = zeroTransferStats();
+
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 
-  private speed = new TransferSpeed();
+  private speed = new TransferProgress();
 
   constructor(private peerChannel: PeerChannel) {
     peerChannel.listenOnMessage((msg) => {
@@ -17,20 +18,8 @@ export class Downloader {
     });
   }
 
-  getStats() {
-    return this.stats;
-  }
-
   getSpeed() {
     return this.speed.value;
-  }
-
-  private resetStatsProgress() {
-    this.stats = {
-      ...this.stats,
-      transferredBytes: 0,
-      currentIndex: 0,
-    };
   }
 
   private isAborted() {
@@ -53,7 +42,6 @@ export class Downloader {
       );
     }
 
-    this.stats = zeroTransferStats();
     this.writer = writableStream.getWriter();
     this.peerChannel.write({ type: "transfer-start" });
   }
@@ -69,13 +57,14 @@ export class Downloader {
       case "transfer-start":
         // no-op
         break;
-      case "transfer-started":
+      case "transfer-started": {
         this.status.setValue("transfer");
 
-        this.stats = message.value;
-        this.speed.reset(message.value.totalBytes);
+        this.speed.reset(message.value.transferSizeBytes);
+        this.speed.startInterval(PROGRESS_EVERY_MS);
 
         break;
+      }
 
       case "transfer-chunk":
         if (this.isAborted()) {
@@ -84,20 +73,19 @@ export class Downloader {
         if (this.status.value !== "transfer") {
           throw new Error("Cannot receive a chunk while not downloading");
         }
-
         if (!this.writer) {
           throw new Error("Cannot receive a chunk without a writer");
         }
+
+        console.log("pushing delta", message.value.length);
+        this.speed.pushDelta(message.value.length);
         this.writer.write(message.value);
+
         break;
       case "transfer-done":
+        console.log("TRANSFER DONE, finishing up");
         this.done();
 
-        break;
-      case "transfer-stats":
-        this.stats = message.value;
-
-        this.speed.tick(message.value.transferredBytes);
         break;
       case "transfer-abort":
         if (this.status.value === "transfer") {
@@ -107,7 +95,6 @@ export class Downloader {
 
       case "preview-content":
         // files have changed, so reset the UI
-        this.resetStatsProgress();
         this.status.setValue("idle");
         break;
 
@@ -118,30 +105,10 @@ export class Downloader {
     // Handle data
   }
 
-  private async internalAbort() {
-    this.transferFinished();
-
-    if (this.status.value !== "transfer") {
-      throw new Error(
-        `Cannot abort a non-downloading transfer (bad status: ${this.status.value})`,
-      );
-    }
-
-    this.status.setValue("aborted");
-
-    if (!this.writer) {
-      throw new Error("Cannot abort a non-downloading transfer (no writer)");
-    }
-
-    await this.writer.abort();
-    this.writer = null;
-  }
-
   private async done() {
-    this.transferFinished();
-    this.stats.transferredBytes = this.stats.totalBytes;
-
+    this.speed.done();
     this.status.setValue("done");
+
     if (!this.writer) {
       throw new Error("Cannot complete a transfer without a writer");
     }
@@ -149,8 +116,22 @@ export class Downloader {
     this.writer = null;
   }
 
-  private transferFinished() {
-    this.speed.reset(0);
+  private async internalAbort() {
+    if (this.status.value !== "transfer") {
+      throw new Error(
+        `Cannot abort a non-downloading transfer (bad status: ${this.status.value})`,
+      );
+    }
+
+    this.status.setValue("aborted");
+    this.speed.reset();
+
+    if (!this.writer) {
+      throw new Error("Cannot abort a non-downloading transfer (no writer)");
+    }
+
+    await this.writer.abort();
+    this.writer = null;
   }
 
   dispose() {

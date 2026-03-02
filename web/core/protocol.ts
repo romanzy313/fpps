@@ -1,10 +1,9 @@
-import { TransferStats } from "./TransferStats";
+import { TransferSummary } from "./TransferStats";
 
 export type TransferStatus = "idle" | "transfer" | "done" | "aborted";
 
 export type PreviewContent = {
-  totalCount: number;
-  totalBytes: number;
+  stats: TransferSummary;
 };
 
 // export type TransferStart = {
@@ -14,10 +13,9 @@ export type PreviewContent = {
 // };
 // TODO: send speed updates with stats
 export type PeerMessage =
-  | { type: "transfer-started"; value: TransferStats }
+  | { type: "transfer-started"; value: { transferSizeBytes: number } }
   | { type: "transfer-start" }
   | { type: "transfer-chunk"; value: Uint8Array }
-  | { type: "transfer-stats"; value: TransferStats }
   | { type: "transfer-abort" }
   | { type: "transfer-done" }
   | { type: "preview-content"; value: PreviewContent };

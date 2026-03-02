@@ -17,10 +17,8 @@ export default function RoomPage() {
     abortDownload,
     abortUpload,
     downloadStatus,
-    downloadStats,
     downloadSpeed,
     uploadStatus,
-    uploadStats,
     uploadSpeed,
     error,
   } = useRoom();
@@ -39,7 +37,6 @@ export default function RoomPage() {
             uploadStatus={uploadStatus}
             addMyFiles={addMoreFiles}
             clearFiles={clearFiles}
-            transferStats={uploadStats}
             transferSpeed={uploadSpeed}
             abortUpload={abortUpload}
           ></Me>
@@ -49,7 +46,6 @@ export default function RoomPage() {
             peerFiles={peerFiles}
             downloadStatus={downloadStatus}
             startDownload={startDownload}
-            transferStats={downloadStats}
             transferSpeed={downloadSpeed}
             abortDownload={abortDownload}
           ></Peer>

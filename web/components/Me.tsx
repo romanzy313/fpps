@@ -1,14 +1,18 @@
 import { useState } from "preact/hooks";
 import { FullFilesState } from "../core/Core";
-import { TransferSpeedValue, TransferStats, TransferStatus } from "../core";
+import {
+  TransferProgressValue,
+  TransferSummary,
+  TransferStatus,
+  TransferProgress,
+} from "../core";
 import { formatSize } from "../utils/formatSize";
-import { TransferProgress } from "./TransferProgress";
+import { TransferProgressDisplay } from "./TransferProgressDisplay";
 
 type Props = {
   peerFiles: FullFilesState;
   uploadStatus: TransferStatus;
-  transferStats: TransferStats;
-  transferSpeed: TransferSpeedValue | null;
+  transferSpeed: TransferProgressValue;
   addMyFiles: (files: File[]) => void;
   clearFiles: () => void;
   abortUpload: () => void;
@@ -17,13 +21,12 @@ type Props = {
 export function Me({
   peerFiles,
   uploadStatus,
-  transferStats,
   transferSpeed,
   addMyFiles,
   clearFiles,
   abortUpload,
 }: Props) {
-  const fileCount = peerFiles.totalCount;
+  const fileCount = peerFiles.totalFiles;
   const fileSizeText = formatSize(peerFiles.totalBytes);
 
   const canUploadFiles = uploadStatus !== "transfer";
@@ -127,7 +130,6 @@ export function Me({
           </div>
         </div>
       </div>
-
       <div
         data-testid="my-transfer-status-text"
         className="transfer-status-text"
@@ -135,10 +137,9 @@ export function Me({
         {getStatusText()}
       </div>
 
-      <TransferProgress
-        stats={transferStats}
-        speed={transferSpeed}
-      ></TransferProgress>
+      <TransferProgressDisplay
+        progress={transferSpeed}
+      ></TransferProgressDisplay>
 
       <div className="file-section__actions">
         <div className="actions-row">
@@ -191,7 +192,7 @@ export function Me({
         <div className="actions-row">
           <button
             className="secondary"
-            disabled={uploadStatus === "transfer" || peerFiles.totalCount === 0}
+            disabled={uploadStatus === "transfer" || peerFiles.totalFiles === 0}
             onClick={clearFiles}
           >
             Clear Files

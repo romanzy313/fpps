@@ -1,19 +1,15 @@
-export type TransferStats = {
-  currentIndex: number;
+export type TransferSummary = {
   totalFiles: number;
-  transferredBytes: number;
   totalBytes: number;
 };
 
-export function zeroTransferStats(): TransferStats {
+export function zeroTransferStats(): TransferSummary {
   return transferStatsFromFiles([]);
 }
 
-export function transferStatsFromFiles(files: File[]): TransferStats {
+export function transferStatsFromFiles(files: File[]): TransferSummary {
   return {
-    currentIndex: 0,
     totalFiles: files.length,
-    transferredBytes: 0,
     totalBytes: files.reduce((acc, file) => acc + file.size, 0),
   };
 }

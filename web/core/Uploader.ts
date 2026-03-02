@@ -1,34 +1,26 @@
 import { PeerMessage, TransferStatus } from "./protocol";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 import { PeerChannel } from "./WebRTC/types";
-import { TransferStats, transferStatsFromFiles } from "./TransferStats";
-import { TransferSpeed } from "./TransferSpeed";
+import { TransferProgress } from "./TransferSpeed";
 import { makeZip, predictLength } from "client-zip";
 import { ChunkSplitterTransformer } from "./ChunkSplitterTransformer";
 
 const CHUNK_SIZE = 2 << 15; // 65kb
+const PROGRESS_EVERY_MS = 500;
 
 export class Uploader {
-  private PROGRESS_EVERY_MS = 1000;
-  private progressInterval: NodeJS.Timeout | null = null;
-
   private files: File[] = [];
 
   status = new ValueSubscriber<TransferStatus>("idle");
 
-  private stats: TransferStats = transferStatsFromFiles([]);
-  private speed = new TransferSpeed();
+  private progress = new TransferProgress();
 
   constructor(private peerChannel: PeerChannel) {
     peerChannel.listenOnMessage(this.onPeerMessage.bind(this));
   }
 
-  getStats() {
-    return this.stats;
-  }
-
   getSpeed() {
-    return this.speed.value;
+    return this.progress.value;
   }
 
   getFiles() {
@@ -40,7 +32,6 @@ export class Uploader {
       throw new Error("Cannot set files while uploading");
     }
     this.files = files;
-    this.stats = transferStatsFromFiles(files);
   }
 
   stop() {
@@ -80,6 +71,11 @@ export class Uploader {
       throw new Error("No files to transfer");
     }
 
+    const predictedBytes = Number(predictLength(this.files));
+
+    this.progress.reset(predictedBytes);
+    this.progress.startInterval(PROGRESS_EVERY_MS);
+
     const stream = makeZip(
       this.files.map((file) => ({
         name: file.webkitRelativePath || file.name,
@@ -87,25 +83,6 @@ export class Uploader {
         input: file,
       })),
     );
-
-    this.progressInterval = setInterval(() => {
-      this.speed.tick(this.stats.transferredBytes);
-
-      // would be nice for the reciever to extrapolate this...
-      // reciever knows how long the payload is
-      this.peerChannel.write({
-        type: "transfer-stats",
-        value: this.stats,
-      });
-    }, this.PROGRESS_EVERY_MS);
-
-    this.stats.currentIndex = 0;
-    this.stats.transferredBytes = 0;
-
-    this.speed.reset(this.stats.totalBytes);
-
-    const predicted = Number(predictLength(this.files));
-    const totalRaw = this.stats.totalBytes;
 
     const reader = stream
       .pipeThrough(
@@ -116,15 +93,11 @@ export class Uploader {
     this.status.setValue("transfer");
 
     try {
-      console.log("file prediction", {
-        predicted,
-        totalRaw,
-        difference: totalRaw - predicted,
-      });
-
       await this.peerChannel.writeAsync({
         type: "transfer-started",
-        value: this.stats,
+        value: {
+          transferSizeBytes: predictedBytes,
+        },
       });
 
       while (true) {
@@ -134,8 +107,7 @@ export class Uploader {
         const { done, value } = await reader.read();
         if (done) break;
 
-        // the bytes a bit off the predicteced length, but its okay
-        this.stats.transferredBytes += value.byteLength;
+        this.progress.pushDelta(value.byteLength);
 
         await this.peerChannel.writeAsync({
           type: "transfer-chunk",
@@ -150,25 +122,16 @@ export class Uploader {
       reader.releaseLock();
 
       this.status.setValue("done");
-      //roll back stats to 100%
-      this.stats.transferredBytes = this.stats.totalBytes;
+
+      // set progress to 100%
+      this.progress.done();
     } catch (err) {
+      this.progress.reset(0);
+
       console.error("error while transferring");
       this.status.setValue("idle");
-      stream.cancel(err);
-    } finally {
-      console.log("actually transferred", {
-        actual: this.stats.transferredBytes,
-        predicted,
-        totalRaw,
-        differenceRaw: this.stats.transferredBytes - totalRaw,
-        differencePredicted: this.stats.transferredBytes - predicted,
-      });
 
-      this.speed.reset(0);
-      if (this.progressInterval) {
-        clearInterval(this.progressInterval);
-      }
+      reader.cancel(err);
     }
   }
 

@@ -22,7 +22,7 @@ export type FileItem = {
 export type FullFilesState = {
   id: string;
   items: FileItem[];
-  totalCount: number;
+  totalFiles: number;
   totalBytes: number;
 };
 
@@ -34,7 +34,7 @@ export function emptyPeerFiles(): FullFilesState {
   return {
     id: randomId(),
     items: [],
-    totalCount: 0,
+    totalFiles: 0,
     totalBytes: 0,
   };
 }
@@ -49,9 +49,6 @@ export class Core {
   private uploader: Uploader;
   private downloader: Downloader;
 
-  uploadStatsValue() {
-    return this.uploader.getStats();
-  }
   uploadSpeedValue() {
     return this.uploader.getSpeed();
   }
@@ -59,9 +56,6 @@ export class Core {
     return this.uploader.status;
   }
 
-  downloadStatsValue() {
-    return this.downloader.getStats();
-  }
   downloadSpeedValue() {
     return this.downloader.getSpeed();
   }
@@ -72,13 +66,13 @@ export class Core {
   private myFiles: FullFilesState = {
     id: randomId(),
     items: [],
-    totalCount: 0,
+    totalFiles: 0,
     totalBytes: 0,
   };
   private peerFiles: FullFilesState = {
     id: randomId(),
     items: [],
-    totalCount: 0,
+    totalFiles: 0,
     totalBytes: 0,
   };
 
@@ -104,8 +98,8 @@ export class Core {
     peerChannel.listenOnMessage((message) => {
       switch (message.type) {
         case "preview-content":
-          this.peerFiles.totalCount = message.value.totalCount;
-          this.peerFiles.totalBytes = message.value.totalBytes;
+          this.peerFiles.totalFiles = message.value.stats.totalFiles;
+          this.peerFiles.totalBytes = message.value.stats.totalBytes;
           this.filesReactor.notifyListeners();
 
           break;
@@ -158,7 +152,7 @@ export class Core {
 
     this.myFiles.id = randomId();
     this.myFiles.items = [...this.myFiles.items, ...parsedFiles];
-    this.myFiles.totalCount += parsedFiles.length;
+    this.myFiles.totalFiles += parsedFiles.length;
     this.myFiles.totalBytes += parsedFiles.reduce(
       (acc, file) => acc + file.sizeBytes,
       this.myFiles.totalBytes,
@@ -178,7 +172,7 @@ export class Core {
 
     this.myFiles.id = randomId();
     this.myFiles.items = [];
-    this.myFiles.totalCount = 0;
+    this.myFiles.totalFiles = 0;
     this.myFiles.totalBytes = 0;
 
     this.filesReactor.notifyListeners();
@@ -206,8 +200,10 @@ export class Core {
     this.peerChannel.write({
       type: "preview-content",
       value: {
-        totalCount: this.myFiles.totalCount,
-        totalBytes: this.myFiles.totalBytes,
+        stats: {
+          totalFiles: this.myFiles.totalFiles,
+          totalBytes: this.myFiles.totalBytes,
+        },
       },
     });
   }

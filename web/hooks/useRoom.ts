@@ -5,10 +5,9 @@ import { useRoomParams } from "./useRoomParams";
 import { Core, emptyPeerFiles, FullFilesState } from "../core/Core";
 import { PeerConnectionStatus } from "../core/WebRTC/types";
 import {
-  TransferSpeedValue,
-  TransferStats,
+  TransferProgressValue,
   TransferStatus,
-  zeroTransferStats,
+  TransferProgress,
 } from "../core";
 import { usePreventNavigation } from "./usePreventNavigation";
 import { ApplicationError } from "../core/ApplicationError";
@@ -30,16 +29,11 @@ export function useRoom() {
   const [uploadStatus, setUploadStatus] = useState<TransferStatus>("idle");
   const [downloadStatus, setDownloadStatus] = useState<TransferStatus>("idle");
 
-  const [uploadStats, setUploadStats] =
-    useState<TransferStats>(zeroTransferStats());
-  const [downloadStats, setDownloadStats] =
-    useState<TransferStats>(zeroTransferStats());
-
-  const [uploadSpeed, setUploadSpeed] = useState<TransferSpeedValue | null>(
-    null,
+  const [uploadSpeed, setUploadSpeed] = useState<TransferProgressValue>(
+    TransferProgress.zeroValue(),
   );
-  const [downloadSpeed, setDownloadSpeed] = useState<TransferSpeedValue | null>(
-    null,
+  const [downloadSpeed, setDownloadSpeed] = useState<TransferProgressValue>(
+    TransferProgress.zeroValue(),
   );
 
   const [isTransferring, setIsTransferring] = useState(false);
@@ -86,8 +80,6 @@ export function useRoom() {
     // query stats every 500 ms
     // TODO: this is bad
     const stopInterval = setInterval(() => {
-      setDownloadStats(newCore.downloadStatsValue());
-      setUploadStats(newCore.uploadStatsValue());
       setDownloadSpeed(newCore.downloadSpeedValue());
       setUploadSpeed(newCore.uploadSpeedValue());
     }, STATS_UPDATE_INTERVAL_MS);
@@ -137,10 +129,8 @@ export function useRoom() {
     abortDownload,
     abortUpload,
     downloadStatus,
-    downloadStats,
     downloadSpeed,
     uploadStatus,
-    uploadStats,
     uploadSpeed,
     error,
     clearError,
