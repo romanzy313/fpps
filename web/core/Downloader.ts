@@ -1,4 +1,4 @@
-import { Toast } from "../utils/toast";
+import { Toast } from "../utils/Toast";
 import { ValueSubscriber } from "../utils/ValueSubscriber";
 import { TRANSFER_PROGRESS_EVERY_MS } from "./consts";
 import { PeerMessage, TransferStatus } from "./protocol";
@@ -175,7 +175,7 @@ export class Downloader {
       throw new Error("Cannot abort a non-downloading transfer (no writer)");
     }
 
-    Toast.error(`Transfer error`, message);
+    Toast.error(`Transfer error: ${message}`);
 
     this.status.setValue("error");
     this.progress.reset();

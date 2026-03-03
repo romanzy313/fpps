@@ -5,7 +5,7 @@ import { TransferProgress } from "./TransferSpeed";
 import { makeZip, predictLength } from "client-zip";
 import { ChunkSplitterTransformer } from "./ChunkSplitterTransformer";
 import { TRANSFER_CHUNK_BYTES, TRANSFER_PROGRESS_EVERY_MS } from "./consts";
-import { Toast } from "../utils/toast";
+import { Toast } from "../utils/Toast";
 
 export class Uploader {
   private files: File[] = [];
@@ -157,7 +157,7 @@ export class Uploader {
       return;
     }
 
-    Toast.error(`Transfer error`, message);
+    Toast.error(`Transfer error: ${message}`);
 
     this.status.setValue("error");
     this.progress.reset();

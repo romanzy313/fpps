@@ -1,4 +1,4 @@
-import { Toast } from "./utils/toast";
+import { Toast } from "./utils/Toast";
 
 function displayUnhandledErrors() {
   window.addEventListener("error", (event) => {

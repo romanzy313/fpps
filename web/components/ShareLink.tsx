@@ -1,5 +1,5 @@
 import { getBaseUrl } from "../utils/getBaseUrl";
-import { Toast } from "../utils/toast";
+import { Toast } from "../utils/Toast";
 
 export function ShareLink({ code }: { code: string }) {
   const baseUrl = getBaseUrl();

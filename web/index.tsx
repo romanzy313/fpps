@@ -15,6 +15,7 @@ import { Footer } from "./components/Footer";
 import { PrerenderResult } from "preact-iso/prerender";
 import { ToastContainer } from "react-toastify";
 import { TransferLockProvider } from "./context/TransferLock";
+import { useTestWebRTC } from "./hooks/useTestWebRTC";
 
 const NotFound = lazy(() => import("./pages/_404"));
 const Home = lazy(() => import("./pages/home/index"));
@@ -22,6 +23,8 @@ const Room = lazy(() => import("./pages/room/index"));
 const About = lazy(() => import("./pages/about/index"));
 
 export function App() {
+  useTestWebRTC();
+
   return (
     <LocationProvider>
       <TransferLockProvider>
