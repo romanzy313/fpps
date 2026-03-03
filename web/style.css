@@ -406,3 +406,15 @@ em {
 .card:hover {
     border-color: var(--color-border-hover);
 }
+
+/* quick toast modifications */
+
+.Toastify__toast button {
+    padding: var(--spacing-sm);
+    min-height: 0;
+    position: unset;
+    align-self: start;
+}
+:root {
+    --toastify-toast-width: 420px;
+}
