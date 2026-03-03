@@ -51,18 +51,23 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "OK")
 }
 
-func serveFilesWith404Handling(fs fs.FS) http.Handler {
-	fileServer := http.FileServerFS(fs)
+func serveFilesWith404Handling(embedFs fs.FS) http.Handler {
+	fileServer := http.FileServerFS(embedFs)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
-		_, err := fs.Open(path)
 
-		if os.IsNotExist(err) {
-			// serve 404 prerender
-			// trailing slashes are annoyances of std lib...
-			r.URL.Path = "/404/"
+		if strings.HasPrefix(path, "assets") {
+			// heavily cached assets
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			fileServer.ServeHTTP(w, r)
+			return
 		}
+
+		// let go handle the rest.
+		// unfortunately, these have no cache headers at all
+		// as embedFs has no timestamps
+
 		fileServer.ServeHTTP(w, r)
 	})
 }

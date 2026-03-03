@@ -17,7 +17,6 @@ import { ToastContainer } from "react-toastify";
 import { TransferLockProvider } from "./context/TransferLock";
 import { useTestWebRTC } from "./hooks/useTestWebRTC";
 
-const NotFound = lazy(() => import("./pages/_404"));
 const Home = lazy(() => import("./pages/home/index"));
 const Room = lazy(() => import("./pages/room/index"));
 const About = lazy(() => import("./pages/about/index"));
@@ -34,7 +33,7 @@ export function App() {
             <Route path="/" component={Home} />
             <Route path="/room" component={Room} />
             <Route path="/about" component={About} />
-            <Route default component={NotFound} />
+            <Route default component={() => <div>Page not found</div>} />
           </Router>
         </main>
         <Footer />
