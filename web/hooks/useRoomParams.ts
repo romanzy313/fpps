@@ -28,7 +28,11 @@ export function useRoomParams(): RoomParams {
 
   if (!roomParams) {
     window.location.href = "/"; // Redirect to home page if room params are invalid
-    return null as any;
+    return {
+      peerId: "",
+      myId: "",
+      secret: "",
+    };
   }
 
   return roomParams;

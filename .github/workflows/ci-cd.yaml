@@ -13,7 +13,7 @@ env:
 jobs:
   # ──────────────────────────────────────────
   test-web:
-    name: Test Web (Node 24)
+    name: Lint, Check, and Test Web (Node 24)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +26,9 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+      - run: pnpm check
       - run: pnpm test
 
   # ──────────────────────────────────────────
