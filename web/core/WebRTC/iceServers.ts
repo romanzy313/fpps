@@ -26,6 +26,7 @@ const iceServers: IceServers = [
 
 // TODO: allow to exclude servers of the other peer
 // TODO: randomize server selection
+// TODO: limit to 5 servers (firefox suggests)
 export function getIceServers(): IceServers {
   if (import.meta.env.DEV) {
     return [localDev, ...iceServers];

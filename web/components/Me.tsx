@@ -1,11 +1,6 @@
 import { useState } from "preact/hooks";
 import { FullFilesState } from "../core/Core";
-import {
-  TransferProgressValue,
-  TransferSummary,
-  TransferStatus,
-  TransferProgress,
-} from "../core";
+import { TransferProgressValue, TransferStatus } from "../core";
 import { formatSize } from "../utils/formatSize";
 import { TransferProgressDisplay } from "./TransferProgressDisplay";
 

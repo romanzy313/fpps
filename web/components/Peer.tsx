@@ -1,9 +1,5 @@
 import { FullFilesState } from "../core/Core";
-import {
-  TransferProgress,
-  TransferProgressValue,
-  TransferStatus,
-} from "../core";
+import { TransferProgressValue, TransferStatus } from "../core";
 import { formatSize } from "../utils/formatSize";
 import { TransferProgressDisplay } from "./TransferProgressDisplay";
 
