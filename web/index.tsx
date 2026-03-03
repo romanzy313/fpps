@@ -8,6 +8,8 @@ import {
 } from "preact-iso";
 
 import "./style.css";
+import "./displayUnhandledErrors";
+
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { PrerenderResult } from "preact-iso/prerender";
