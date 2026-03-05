@@ -7,7 +7,7 @@ docker-dev:
 	docker build --progress plain -t file-transfer-dev .
 	docker run -e PORT=6173 -p 6173:6173 file-transfer-dev
 
-IMAGE ?= romanzy313/file-transfer
+IMAGE ?= freeappnet/file-transfer
 .PHONY: docker-publish
 docker-publish:
 	pnpm test

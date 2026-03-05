@@ -1,10 +1,10 @@
-# fpps - Free Peer-to-Peer file Sharing.
+# File Sharing
 
-Hosted online at [fpps.free-app.net](https://fpps.free-app.net/). I have [published an article on my website](https://volovoy.com/article/building-peer-to-peer-file-sharing-application) that goes deeper into the internals of this project.
+The best peer-to-peer file sharing application on the web.
 
-Note: this may not work on iOS devices due to privacy settings... I am currently investigating this.
+Hosted online at [file-transfer.free-app.net](https://file-transfer.free-app.net/). I have [published an article on my website](https://volovoy.com/article/building-peer-to-peer-file-sharing-application) that goes deeper into the internals of this project.
 
-## How to Use
+## How To Use
 
 Go to the application. Click on `Create Room`. The application generates a unique share link. Click on it to copy to the clipboard. Share it with anyone you want to exchange files with. When they join using the link, a direct WebRTC connection is established between your browsers.
 
@@ -27,15 +27,15 @@ When you create a room, the application generates a unique code invisible to the
 Run with Docker
 
 ```sh
-docker run -e PORT=3000 -p 3000:3000 romanzy313/fpps:latest
+docker run -e PORT=3000 -p 3000:3000 freeappnet/file-transfer:latest
 ```
 
 Or use Docker Compose
 
 ```yaml
 services:
-  fpps:
-    image: romanzy313/fpps:${TAGNAME:-latest}
+  file-transfer:
+    image: freeappnet/file-transfer:${TAGNAME:-latest}
     pull_policy: always
     restart: unless-stopped
     ports:
@@ -48,11 +48,11 @@ Additionally, GitHub releases contain `linux amd64` banary. Just run it. The def
 
 ## Technologies
 
-- WebRPC for peer-to-peer communication
-- Preact frontend for a slim SPA experience
-- Minimal server infrastructure: encrypted signaling via http/SSE to establish peer to peer connectivity
+- WebRPC with [peer-lite](https://github.com/skyllo/peer-lite) for peer-to-peer communication
 - Uploads folders with [client-zip](https://github.com/Touffy/client-zip), for single file download
 - Uses [StreamSaver.js](https://github.com/jimmywarting/StreamSaver.js) to download files as a writable stream
+- HTTP/SSE signaling Go server
+- Preact frontend
 
 ## Development
 

@@ -1,9 +1,0 @@
-services:
-  fpps:
-    image: romanzy313/fpps:${TAGNAME:-latest}
-    pull_policy: always
-    restart: unless-stopped
-    ports:
-      - 3000
-    environment:
-      - PORT=3000
