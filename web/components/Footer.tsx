@@ -6,11 +6,11 @@ export function Footer() {
       <p className="footer__text">
         Created by{" "}
         <ExternalLink href="https://volovoy.com">Roman Volovoy</ExternalLink> •{" "}
-        <ExternalLink href="https://github.com/romanzy313/fpps">
+        <ExternalLink href="https://github.com/free-app-net/file-transfer">
           Source Code
         </ExternalLink>{" "}
         •{" "}
-        <ExternalLink href="https://github.com/romanzy313/fpps/blob/main/LICENSE">
+        <ExternalLink href="https://github.com/free-app-net/file-transfer/blob/main/LICENSE">
           License
         </ExternalLink>
       </p>

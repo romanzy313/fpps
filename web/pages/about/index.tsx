@@ -100,7 +100,7 @@ export default function AboutPage() {
               AGPL-3.0
             </ExternalLink>
             . The source code is{" "}
-            <ExternalLink href="https://github.com/romanzy313/fpps">
+            <ExternalLink href="https://github.com/free-app-net/file-transfer">
               publically available
             </ExternalLink>
             .

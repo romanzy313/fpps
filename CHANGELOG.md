@@ -15,6 +15,10 @@ Instructions:
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-03-05
+- Cleanup dependencies
+- Finish rebranding
+
 ## [1.2.0] - 2026-03-05
 - Application rebranded to File Transfer
 - Minor UI fixes

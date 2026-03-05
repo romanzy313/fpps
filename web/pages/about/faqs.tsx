@@ -2,7 +2,7 @@ import type { JSX } from "preact/jsx-runtime";
 import { ExternalLink } from "../../utils/ExternalLink";
 
 const selfHostDocsUrl =
-  "https://github.com/romanzy313/fpps?tab=readme-ov-file#self-host";
+  "https://github.com/free-app-net/file-transfer?tab=readme-ov-file#self-host";
 
 export const faqs: {
   question: string;

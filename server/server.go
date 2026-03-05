@@ -38,7 +38,7 @@ func Run(opts RunOpts) {
 		Addr:    addr,
 	}
 
-	log.Printf("FPPS server is listening on %s\n", addr)
+	log.Printf("File Transfer server is listening on %s\n", addr)
 	err := serv.ListenAndServe()
 
 	if err != nil {

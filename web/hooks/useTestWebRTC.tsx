@@ -9,7 +9,7 @@ export function useTestWebRTC() {
   useEffect(() => {
     console.log("TESTING WEBRTC");
     if (!isWebRTCEnabled()) {
-      Toast.error("WebRTC is not enabled. FPPS will not work.", {
+      Toast.error("WebRTC is not enabled. The application will not work.", {
         dontAutoDismiss: true,
       });
       return;

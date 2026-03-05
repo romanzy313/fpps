@@ -5,11 +5,11 @@ import {
   unzipFromStream,
 } from "./fileHelpers";
 
-test("has title", async ({ page }) => {
+test("page loads", async ({ page }) => {
   await page.goto("/");
 
   // Expect a title "to contain" a substring.
-  await expect(page).toHaveTitle(/FPPS/);
+  await expect(page).toHaveTitle(/File Transfer/);
 });
 
 test("connect peers", async ({ browser }) => {
