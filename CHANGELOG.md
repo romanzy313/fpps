@@ -17,6 +17,7 @@ Instructions:
 
 ## [1.2.0] - 2026-03-05
 - Application rebranded to File Transfer
+- Minor UI fixes
 
 ## [1.1.0] - 2026-03-04 
 - Signaling protocol reworked. Now room is a single ID

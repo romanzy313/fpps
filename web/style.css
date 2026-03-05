@@ -412,8 +412,8 @@ em {
 .Toastify__toast button {
     padding: var(--spacing-sm);
     min-height: 0;
-    position: unset;
-    align-self: start;
+    /*position: unset;*/
+    /*align-self: start;*/
 }
 :root {
     --toastify-toast-width: 420px;
