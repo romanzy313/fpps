@@ -31,6 +31,7 @@ export function FileUploader({ onSelect, enabled }: Props) {
           ref={filesInputRef}
           id="upload-files"
           data-testid="upload-files-input"
+          tabIndex={-1}
           type="file"
           disabled={!enabled}
           multiple
@@ -53,6 +54,7 @@ export function FileUploader({ onSelect, enabled }: Props) {
         <input
           ref={folderInputRef}
           id="upload-folder"
+          tabIndex={-1}
           type="file"
           disabled={!enabled}
           multiple
