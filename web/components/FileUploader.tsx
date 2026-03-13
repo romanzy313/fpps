@@ -34,7 +34,7 @@ export function FileUploader({ onSelect, enabled }: Props) {
           type="file"
           disabled={!enabled}
           multiple
-          className="file-input file-input--hidden"
+          className="file-input--hidden"
           onChange={(e) =>
             e.currentTarget.files && onFilesSelect(e.currentTarget.files)
           }
@@ -56,7 +56,7 @@ export function FileUploader({ onSelect, enabled }: Props) {
           type="file"
           disabled={!enabled}
           multiple
-          className="file-input file-input--hidden"
+          className="file-input--hidden"
           {...({
             webkitdirectory: true,
             mozdirectory: true,
