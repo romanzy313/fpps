@@ -91,17 +91,11 @@ export function Me({
 
       <div className="file-section__actions">
         <FileUploader
-          enabled={canUploadFiles}
+          canClear={fileCount > 0}
+          onClear={clearFiles}
           onSelect={onFilesSelected}
         ></FileUploader>
         <div className="actions-row">
-          <button
-            className="secondary"
-            disabled={uploadStatus === "transfer" || peerFiles.totalFiles === 0}
-            onClick={clearFiles}
-          >
-            Clear Files
-          </button>
           <button
             className="danger"
             disabled={uploadStatus !== "transfer"}
