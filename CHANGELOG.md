@@ -11,6 +11,8 @@ Instructions:
 -->
 
 ## [Unreleased]
+
+## [1.3.0] - 2026-03-13
 - Revamp of choose files UI
 - Guide implemented: Important buttons are animated and next action in the room is outlined
 - Home page reworked to include features and no join code
