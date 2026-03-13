@@ -11,9 +11,9 @@ Instructions:
 -->
 
 ## [Unreleased]
-- Revamp choosing files UI
-- Guide highlights
-- Animate main workflow buttons
+- Revamp of choose files UI
+- Guide implemented: Important buttons are animated and next action in the room is outlined
+- Home page reworked to include features and no join code
 
 ## [1.2.1] - 2026-03-05
 - Cleanup dependencies

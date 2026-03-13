@@ -70,6 +70,11 @@
 }
 
 .home-feature-item__icon {
+    width: 2.2rem;
+    min-width: 2.2rem;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
     font-size: var(--font-size-xl);
     line-height: 1;
     margin-top: 2px;
