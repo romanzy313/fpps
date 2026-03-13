@@ -81,7 +81,9 @@ export class RestarableError extends Error {
       }
     }
 
-    if (cause instanceof RTCError) {
+    // this fails on firefox
+    // if (cause instanceof RTCError) {
+    if (cause instanceof Error && cause.name === "RTCError") {
       return new RestarableError(cause.message, "connection_interrupted");
     }
 

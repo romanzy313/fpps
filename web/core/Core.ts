@@ -127,11 +127,13 @@ export class Core {
     });
 
     this.uploader = new Uploader(peerChannel);
-    this.downloader = new Downloader(peerChannel, (size) =>
-      window.streamSaver
-        .createWriteStream("ffps_download.zip", { size })
-        .getWriter(),
-    );
+    this.downloader = new Downloader(peerChannel, (size) => {
+      const properSize = size <= 0 ? undefined : size;
+
+      return window.streamSaver
+        .createWriteStream("ffps_download.zip", { size: properSize })
+        .getWriter();
+    });
 
     setTimeout(() => {
       peerChannel.start();

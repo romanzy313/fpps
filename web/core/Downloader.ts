@@ -44,13 +44,13 @@ export class Downloader {
 
     if (this.status.value === "transfer") {
       throw new Error(
-        "Cannot start a transfer while it's already in progress (bad status)",
+        "Initializer: Cannot start a transfer while it's already in progress (bad status)",
       );
     }
     if (this.writer) {
-      throw new Error(
-        "Cannot start a transfer while it's already in progress (bad writer)",
-      );
+      console.warn("Initializer: bad writer when trying starting a download");
+
+      this.abortWriter();
     }
 
     this.peerChannel.write({ type: "transfer-start", value: undefined });
@@ -74,13 +74,15 @@ export class Downloader {
       case "transfer-started": {
         if (this.status.value === "transfer") {
           throw new Error(
-            "Cannot start a transfer while it's already in progress (bad status)",
+            "Peer requests a transfer while it's already in progress (bad status)",
           );
         }
         if (this.writer) {
-          throw new Error(
-            "Cannot start a transfer while it's already in progress (writer exists)",
+          console.warn(
+            "Peer requests a transfer while it's already in progress (writer exists)",
           );
+
+          this.abortWriter();
         }
 
         this.status.setValue("transfer");
@@ -113,18 +115,13 @@ export class Downloader {
         if (this.status.value !== "transfer") {
           throw new Error("Cannot complete a transfer (bad status)");
         }
-        if (!this.writer) {
-          throw new Error("Cannot complete a transfer (no writer)");
-        }
 
         Toast.success("Download complete");
 
         this.status.setValue("done");
         this.progress.done();
 
-        this.writer.close().then(() => {
-          this.writer = null;
-        });
+        this.closeWriter();
 
         break;
       }
@@ -155,24 +152,15 @@ export class Downloader {
   }
 
   private async internalAbort() {
-    if (!this.writer) {
-      throw new Error("Cannot abort a non-downloading transfer (no writer)");
-    }
-
     this.status.setValue("aborted");
     this.progress.reset();
 
-    this.writer.abort().then(() => {
-      this.writer = null;
-    });
+    this.abortWriter();
   }
 
   private async internalError(message: string) {
     if (this.status.value !== "transfer") {
       return;
-    }
-    if (!this.writer) {
-      throw new Error("Cannot abort a non-downloading transfer (no writer)");
     }
 
     Toast.error(`Transfer error: ${message}`);
@@ -180,7 +168,33 @@ export class Downloader {
     this.status.setValue("error");
     this.progress.reset();
 
-    this.writer.abort().then(() => {
+    this.abortWriter();
+  }
+
+  private abortWriter() {
+    if (!this.writer) {
+      console.warn("No writer to abort");
+      return;
+    }
+
+    this.writer.abort();
+    this.writer = null;
+  }
+
+  private closeWriter() {
+    if (!this.writer) {
+      console.warn("No writer to close");
+      return;
+    }
+
+    // TODO: give it 3 seconds before setting to null?
+    // this.writer.close().then(() => {
+    //   console.log("writer closed");
+    //   this.writer = null;
+    // });
+
+    this.writer.close();
+    setTimeout(() => {
       this.writer = null;
     });
   }

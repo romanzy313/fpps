@@ -60,8 +60,6 @@ func serveFilesWithCaching(embedFs fs.FS) http.Handler {
 		if strings.HasPrefix(path, "assets") {
 			// heavily cached assets
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-			fileServer.ServeHTTP(w, r)
-			return
 		}
 
 		// go will handle the rest of the files.

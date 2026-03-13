@@ -11,6 +11,7 @@
 	when the worker then receives a stream then the worker will tell the opener
 	to open up a link that will start the download
 -->
+<!doctype html>
 <script>
     // This will prevent the sw from restarting
     let keepAlive = () => {
@@ -190,10 +191,9 @@
             window.onmessage = onMessage;
             messages.forEach(window.onmessage);
         });
+    } else {
+        // FF can ping sw with fetch from a secure hidden iframe
+        // shouldn't really be possible?
+        keepAlive();
     }
-
-    // FF v102 just started to supports transferable streams, but still needs to ping sw.js
-    // even tough the service worker dose not have to do any kind of work and listen to any
-    // messages... #305
-    keepAlive();
 </script>

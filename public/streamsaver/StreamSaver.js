@@ -39,7 +39,7 @@
     WritableStream: global.WritableStream || ponyfill.WritableStream,
     supported: true,
     version: { full: "2.0.5", major: 2, minor: 0, dot: 5 },
-    mitm: "/streamsaver/mitm.html?version=2.0.0",
+    mitm: "/streamsaver/mitm.html?version=2.0.5",
   };
 
   /**
