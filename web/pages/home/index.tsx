@@ -30,24 +30,65 @@ export default function HomePage() {
         </p>
       </section>
 
-      {/* Action Cards */}
-      <div className="home-actions">
-        {/* Create Room Card */}
-        <div className="card home-card">
-          <div className="home-card__header">
-            <h2 className="home-card__title">Create a New Room</h2>
-            <p className="home-card__description">
-              Start a new sharing session and invite others to join
+      {/* Create Room Card */}
+      <div className="card home-card">
+        <div className="home-card__header">
+          <h2 className="home-card__title">Create a New Room</h2>
+          <p className="home-card__description">
+            Start a new sharing session and invite others to join
+          </p>
+        </div>
+        <div className="home-card__content">
+          <button
+            className="home-card__button guide-button"
+            onClick={startRoom}
+            data-testid="create-room-button"
+          >
+            Create Room
+          </button>
+        </div>
+      </div>
+
+      {/* Features */}
+      <div className="home-features">
+        <div className="home-feature-item">
+          <span className="home-feature-item__icon">🔒</span>
+          <div className="home-feature-item__content">
+            <h3 className="home-feature-item__title">Secure & Private</h3>
+            <p className="home-feature-item__description">
+              End-to-end encrypted connections. Your files are never stored on
+              our servers.
             </p>
           </div>
-          <div className="home-card__content">
-            <button
-              className="home-card__button guide-button"
-              onClick={startRoom}
-              data-testid="create-room-button"
-            >
-              Create Room
-            </button>
+        </div>
+        <div className="home-feature-item">
+          <span className="home-feature-item__icon">⚡</span>
+          <div className="home-feature-item__content">
+            <h3 className="home-feature-item__title">Fast Transfers</h3>
+            <p className="home-feature-item__description">
+              Direct peer-to-peer connections mean faster transfers with no
+              middleman.
+            </p>
+          </div>
+        </div>
+        <div className="home-feature-item">
+          <span className="home-feature-item__icon">∞</span>
+          <div className="home-feature-item__content">
+            <h3 className="home-feature-item__title">No Limits</h3>
+            <p className="home-feature-item__description">
+              Share files of any size with no upload limits or file size
+              restrictions.
+            </p>
+          </div>
+        </div>
+        <div className="home-feature-item">
+          <span className="home-feature-item__icon">🌐</span>
+          <div className="home-feature-item__content">
+            <h3 className="home-feature-item__title">Browser-Based</h3>
+            <p className="home-feature-item__description">
+              Works entirely in your browser. No installation or registration
+              required.
+            </p>
           </div>
         </div>
       </div>
